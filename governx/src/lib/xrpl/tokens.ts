@@ -124,47 +124,6 @@ export async function createIOUToken(
   }
 }
 
-/**
- * Get account token balances
- * @param address Account address
- * @param network Network to use
- */
-export async function getTokenBalances(
-  address: string,
-  network: 'testnet' | 'mainnet' = 'testnet'
-): Promise<{ tokens: TokenInfo[]; error?: string }> {
-  const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
-    : "wss://xrplcluster.com";
-    
-  const client = new Client(networkUrl);
-  
-  try {
-    await client.connect();
-
-    const lines = await client.request({
-      command: "account_lines",
-      account: address,
-    });
-
-    const tokens: TokenInfo[] = lines.result.lines.map((line: any) => ({
-      currency: line.currency,
-      issuer: line.account,
-      value: line.balance,
-      limit: line.limit,
-    }));
-
-    return { tokens };
-  } catch (error) {
-    console.error('Token balance error:', error);
-    return { 
-      tokens: [], 
-      error: error instanceof Error ? error.message : 'Failed to get token balances' 
-    };
-  } finally {
-    await client.disconnect();
-  }
-}
 
 /**
  * Send IOU tokens

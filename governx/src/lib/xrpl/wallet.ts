@@ -54,7 +54,7 @@ export async function createXRPLWallet(
         success: true,
         wallet: {
           address: testWallet.classicAddress,
-          secret: testWallet.seed,
+          secret: testWallet.seed || '',
           balance: accountData.Balance,
           sequence: accountData.Sequence,
         }
@@ -67,7 +67,7 @@ export async function createXRPLWallet(
         success: true,
         wallet: {
           address: wallet.classicAddress,
-          secret: wallet.seed,
+          secret: wallet.seed || '',
           balance: "0",
           sequence: 0,
         }

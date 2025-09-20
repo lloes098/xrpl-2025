@@ -370,13 +370,13 @@ export class EscrowManager {
 
       if (escrow) {
         return {
-          owner: escrow.Account,
-          sequence: escrow.Sequence,
-          destination: escrow.Destination,
-          amount: escrow.Amount,
-          finishAfter: escrow.FinishAfter,
-          cancelAfter: escrow.CancelAfter,
-          condition: escrow.Condition
+          owner: (escrow as any).Account,
+          sequence: (escrow as any).Sequence,
+          destination: (escrow as any).Destination,
+          amount: (escrow as any).Amount,
+          finishAfter: (escrow as any).FinishAfter,
+          cancelAfter: (escrow as any).CancelAfter,
+          condition: (escrow as any).Condition
         };
       }
 
