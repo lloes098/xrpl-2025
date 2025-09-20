@@ -1,4 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GovernX - Decentralized Governance Platform
+
+GovernX is a modern, decentralized governance platform built on the XRPL (XRP Ledger) network. It enables communities to create proposals, conduct transparent voting, and make collective decisions in a secure and trustless environment.
+
+## Features
+
+- 🗳️ **Transparent Voting**: All votes recorded on XRPL for complete transparency
+- 🔒 **Secure & Trusted**: Built on XRPL's robust infrastructure
+- 👥 **Community Driven**: Empower community participation in governance
+- 📊 **Real-time Dashboard**: Track proposals and voting progress
+- 🎯 **Easy Proposal Creation**: Simple interface for creating governance proposals
+
+This is a [Next.js](https://nextjs.org) project with TypeScript and Tailwind CSS.
 
 ## Getting Started
 
