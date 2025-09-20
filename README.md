@@ -5,7 +5,7 @@ Ripplize – XRPL 통합 크라우드펀딩 플랫폼
 Ripplize는 XRP Ledger(XRPL) 을 기반으로 한 완전 분산형 크라우드펀딩 플랫폼입니다.
 투명성, 보안성, 그리고 사용자 자율성을 핵심 가치로 하여, 다음과 같은 주요 기능들을 제공합니다.
 
-1. 지갑 연결 및 계정 관리
+## 1. 지갑 연결 및 계정 관리
 
 XRPL.js Client 연결: Testnet/Mainnet 네트워크 자동 연결 및 실시간 블록체인 데이터 접근
 
@@ -15,7 +15,7 @@ XRPL.js Client 연결: Testnet/Mainnet 네트워크 자동 연결 및 실시간 
 
 계정 정보 조회: getAccountBalance() 함수로 실시간 XRP 잔액 및 계정 상태 확인
 
-2. 다중 통화 결제 시스템
+## 2. 다중 통화 결제 시스템
 
 XRP 결제: sendXRPPayment() 함수로 네이티브 XRP 전송
 
@@ -25,7 +25,7 @@ RLUSD 지원: XRP와 동일한 네이티브 통화 처리 (별도 트러스트�
 
 자동 트러스트라인 설정: setupTrustline(), checkTrustline() 함수로 IOU 토큰 보유를 위한 트러스트라인 자동 생성
 
-3. 에스크로 시스템
+## 3. 에스크로 시스템
 
 조건부 자금 관리: createProjectEscrow() 함수로 프로젝트별 독립적인 에스크로 생성
 
@@ -35,7 +35,7 @@ RLUSD 지원: XRP와 동일한 네이티브 통화 처리 (별도 트러스트�
 
 XRP/IOU 에스크로: createXRPEscrow(), createIOUEscrow() 함수로 다양한 자산 유형 지원
 
-4. MPToken 생태계
+## 4. MPToken 생태계
 
 토큰 발행: MPTokenManager 클래스로 프로젝트별 독립적인 MPToken 생성
 
@@ -51,7 +51,7 @@ cancelMPTLifecycle()
 
 거버넌스 통합: 토큰 기반 투표권 및 의사결정 시스템 연동
 
-5. 실시간 데이터 동기화
+## 5. 실시간 데이터 동기화
 
 잔액 조회: getCompleteBalance() 함수로 XRP 및 IOU 토큰 잔액 실시간 조회
 
@@ -59,7 +59,7 @@ cancelMPTLifecycle()
 
 상태 모니터링: BalanceManager 클래스로 계정 상태 및 토큰 보유량 실시간 업데이트
 
-6. 보안 및 검증
+## 6. 보안 및 검증
 
 트랜잭션 서명: 클라이언트 사이드 개인키 서명 후 XRPL에 제출
 
@@ -67,7 +67,7 @@ cancelMPTLifecycle()
 
 에러 처리: XRPL 특화 에러 코드(tecUNFUNDED, tesSUCCESS 등) 처리 및 사용자 친화적 메시지 제공
 
-🚀 결론
+## 🚀 Conclusion 
 
 Ripplize는 XRPL 기반으로 구축된 완전히 분산화된 크라우드펀딩 플랫폼으로,
 투명성, 보안성, 그리고 사용자 자율성을 보장합니다.
