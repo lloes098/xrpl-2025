@@ -1,11 +1,233 @@
+// trustset.ts 예제
+import { trustset } from "./trustset";
+(async () => {
+    await trustset(
+        "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW", // holderSeed
+        "rG5ZCXCbCb3GhYrUe91JvcKARL5QrfGpao", // issuerAddress
+        "ETF", // currency
+        "1000" // limitValue
+    );
+})();
+
+
+// createWallet.ts 예제
+import { createWallet } from "./createWallet";
+(async () => {
+    const newWallet = await createWallet();
+    console.log(newWallet);
+})();
+
+// getTokenBalance.ts 예제
+import { checkTokenBalance } from "./getTokenBalance";
+(async () => {
+    // (조회하고 싶은 주소)
+    await checkTokenBalance("rLiKJX3SoddTwo9sFfaXy7wuaiNZdiPSYW");
+})();
+
+// getXRPBalance.ts 예제
+import { checkXRPBalance } from "./getXRPBalance";
+(async () => {
+    const testAddress = "rLiKJX3SoddTwo9sFfaXy7wuaiNZdiPSYW"; // 조회하고 싶은 XRP 주소 입력
+    await checkXRPBalance(testAddress);
+})();
+
+// makeToken.ts 예제
+import { makeToken } from "./makeToken";
+(async () => {
+    try {
+        // 1. 먼저 trustset 설정
+        console.log("TrustSet 설정 중...");
+        await trustset(
+            "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc", // holderSeed
+            "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW", // issuerAddressOrSeed
+            "ETF", // currency
+            "1000000" // limitValue
+        );
+        console.log("TrustSet 설정 완료!");
+        
+        // 2. IOU 토큰 발행
+        console.log("IOU 토큰 발행 중...");
+        await makeToken("ETF", "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc", "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW", "10000");
+        console.log("IOU 토큰 발행 완료!");
+    } catch (error) {
+        console.error("makeToken 예제 실패:", error);
+    }
+})();
+
+// pay.ts 예제
+import { pay } from "./pay";
+(async () => {
+    const WalletSecret = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
+    const ReceiverAddr = "r4aeWS2sCXXjRupQGd9M7xsDqQm";   
+    
+    if (WalletSecret) {
+        // (지갑 secret, 수신자 주소, 송금 금액)
+        await pay(WalletSecret, ReceiverAddr, 90);
+    }
+})();
+
+// payIOU.ts 예제
+import { sendIssuedToken } from "./payIOU";
+(async () => {
+    try {
+        // 1. 먼저 trustset 설정
+        console.log("TrustSet 설정 중...");
+        await trustset(
+            "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc", // holderSeed
+            "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW", // issuerAddress
+            "ETF", // currency
+            "1000000" // limitValue
+        );
+        console.log("TrustSet 설정 완료!");
+        
+        // 2. IOU 토큰 전송
+        console.log("IOU 토큰 전송 중...");
+        await sendIssuedToken("sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc", "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW", "100");
+        console.log("IOU 토큰 전송 완료!");
+    } catch (error) {
+        console.error("payIOU 예제 실패:", error);
+    }
+})();
+
+
+
+// MPTokens.ts 예제
+import { createMPToken, optInMPToken, sendMPToken } from "./Features/MPTokens";
+(async () => {
+    const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
+    const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
+    
+    try {
+        // 1. MPT 발행 (metadata 포함)
+        const tokenInfo = {
+            name: "DevNet Demo Token",
+            ticker: "DDT",
+            description: "A demonstration Multi-Purpose Token for XRPL Devnet testing",
+            decimals: 2,
+            total_supply: "100000000", // 1,000,000 units
+            asset_class: "other", 
+            icon: "https://xrpl.org/assets/favicon.16698f9bee80e5687493ed116f24a6633bb5eaa3071414d64b3bed30c3db1d1d.8a5edab2.ico",
+            use_case: "Educational demonstration",
+            issuer_name: "yourfavdevrel"
+        };
+        const metadata = Buffer.from(JSON.stringify(tokenInfo)).toString('hex');
+        
+        const { issuanceId } = await createMPToken(
+            ADMIN_SEED, 
+            USER_SEED,
+            0,                    // assetScale
+            "1000000000",        // maximumAmount
+            metadata             // metadata 추가
+        );
+        console.log("MPT 발행 성공! IssuanceID:", issuanceId);
+        
+        // 2. Opt-in
+        await optInMPToken(USER_SEED, issuanceId);
+        console.log("Opt-in 성공!");
+        
+        // 3. MPT 전송
+        const userWallet = require("xrpl").Wallet.fromSeed(USER_SEED);
+        await sendMPToken(ADMIN_SEED, USER_SEED, issuanceId, userWallet.address, "1000");
+        console.log("MPT 전송 성공!");
+        
+    } catch (error) {
+        console.error("MPT 테스트 실패:", error);
+    }
+})();
+
+// TokenEscrow.ts 예제
+// trustline 먼저 생성해야함
+import { 
+    createIOUEscrow,
+    createMPTEscrow,
+    finishEscrow as finishEscrowOld,
+    cancelEscrow as cancelEscrowOld,
+    getEscrowInfo as getEscrowInfoOld,
+    runIOUEscrowLifecycle,
+    runMPTEscrowLifecycle,
+    TokenEscrowManager 
+} from "./Features/TokenEscrow";
+(async () => {
+    const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
+    const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
+    const USER2_SEED = "sEdVFeW3aqETMKYc7z9pUToiBuaPD4V";
+    
+    try {
+        console.log("=== TokenEscrow 예제 시작 ===");
+        
+        // 1. MPT 에스크로 생성 예제
+        console.log("\n1. MPT 에스크로 생성...");
+        const user2Wallet = require("xrpl").Wallet.fromSeed(USER2_SEED);
+        const mptEscrowResult = await createMPTEscrow(
+            ADMIN_SEED,
+            USER_SEED,
+            USER2_SEED,
+            "0060CC6BAC66353D2C0CB91858C578A16979C5B7983107DA", // MPT ID 입력
+            "10", // value
+            user2Wallet.address, // destination
+            5,  // finishAfter (5초 후 자동 완료)
+            30  // cancelAfter (30초 후 취소 가능)
+        );
+        console.log("✅ MPT 에스크로 생성 성공! Sequence:", mptEscrowResult.sequence);
+        
+        // 2. 에스크로 정보 조회 예제
+        console.log("\n2. 에스크로 정보 조회...");
+        try {
+            const escrowInfo = await getEscrowInfoOld(
+                ADMIN_SEED,
+                USER_SEED,
+                USER2_SEED,
+                mptEscrowResult.result?.tx_json?.Account,
+                mptEscrowResult.sequence
+            );
+            console.log("✅ 에스크로 정보 조회 성공!");
+            console.log("Escrow Info:", escrowInfo);
+        } catch (error) {
+            console.log("⚠️ 에스크로 정보 조회 실패 (정상적일 수 있음):", error instanceof Error ? error.message : String(error));
+        }
+        
+        // 3. 전체 생명주기 예제 (권장)
+        console.log("\n3. MPT 에스크로 전체 생명주기...");
+        await runMPTEscrowLifecycle(
+            ADMIN_SEED,
+            USER_SEED,
+            USER2_SEED,
+            "0060CC6BAC66353D2C0CB91858C578A16979C5B7983107DA", // 기존 issuanceId 사용
+            "5", // value
+            5,  // finishAfter (5초 후 자동 완료)
+            30, // cancelAfter (30초 후 취소 가능)
+            true // autoFinish (자동 완료)
+        );
+        console.log("✅ MPT 에스크로 전체 생명주기 완료!");
+        
+        // 4. TokenEscrowManager 클래스 사용 예제
+        console.log("\n4. TokenEscrowManager 클래스 사용...");
+        const escrowManager = new TokenEscrowManager(ADMIN_SEED, USER_SEED, USER2_SEED);
+        try {
+            await escrowManager.connect();
+            console.log("✅ 연결 성공!");
+            console.log("Admin Address:", escrowManager.getAdminAddress());
+            console.log("User Address:", escrowManager.getUserAddress());
+            console.log("User2 Address:", escrowManager.getUser2Address());
+        } finally {
+            await escrowManager.disconnect();
+        }
+        
+        console.log("\n=== TokenEscrow 예제 완료! ===");
+        
+    } catch (error) {
+        console.error("❌ TokenEscrow 예제 실패:", error);
+    }
+})();
+
 // ========================================
-// XRPL 에스크로 기능 예제 모음
+// 새로운 에스크로 기능 예제들
 // ========================================
 
 // 1. 에스크로 생성 예제
 import { createEscrow } from "./Features/EscrowCore";
 (async () => {
-    console.log("=== 에스크로 생성 예제 ===");
+    console.log("\n=== 새로운 에스크로 생성 예제 ===");
     
     const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
@@ -43,7 +265,7 @@ import { createEscrow } from "./Features/EscrowCore";
 // 2. 에스크로 완료 예제
 import { finishEscrow } from "./Features/EscrowCore";
 (async () => {
-    console.log("\n=== 에스크로 완료 예제 ===");
+    console.log("\n=== 새로운 에스크로 완료 예제 ===");
     
     const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
@@ -74,7 +296,7 @@ import { finishEscrow } from "./Features/EscrowCore";
 // 3. 에스크로 취소 예제
 import { cancelEscrow } from "./Features/EscrowCore";
 (async () => {
-    console.log("\n=== 에스크로 취소 예제 ===");
+    console.log("\n=== 새로운 에스크로 취소 예제 ===");
     
     const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
@@ -105,7 +327,7 @@ import { cancelEscrow } from "./Features/EscrowCore";
 // 4. 에스크로 정보 조회 예제
 import { getEscrowInfo } from "./Features/EscrowCore";
 (async () => {
-    console.log("\n=== 에스크로 정보 조회 예제 ===");
+    console.log("\n=== 새로운 에스크로 정보 조회 예제 ===");
     
     const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
@@ -145,7 +367,7 @@ import { getEscrowInfo } from "./Features/EscrowCore";
 // 5. EscrowCore 클래스 사용 예제
 import { EscrowCore } from "./Features/EscrowCore";
 (async () => {
-    console.log("\n=== EscrowCore 클래스 사용 예제 ===");
+    console.log("\n=== 새로운 EscrowCore 클래스 사용 예제 ===");
     
     const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW";
