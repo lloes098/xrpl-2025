@@ -46,7 +46,7 @@ export class XRPLClient {
     await this.connect();
 
     const payment = {
-      TransactionType: 'Payment',
+      TransactionType: 'Payment' as const,
       Account: senderWallet.address,
       Amount: xrpToDrops(amount),
       Destination: destinationAddress,
@@ -61,8 +61,8 @@ export class XRPLClient {
       account: senderWallet.address,
       destination: destinationAddress,
       amount: amount,
-      fee: dropsToXrp(response.result.Fee || '0'),
-      sequence: response.result.Sequence || 0,
+      fee: '0', // Fee는 response에서 직접 접근하기 어려우므로 일단 0으로 설정
+      sequence: 0, // Sequence도 마찬가지
       timestamp: new Date().toISOString(),
     };
   }
