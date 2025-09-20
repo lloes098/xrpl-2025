@@ -39,15 +39,10 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 45 }}>
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <Card className="relative w-full max-w-md mx-4 z-10">
+    <div className="fixed inset-0 z-[9999]">
+      {/* Modal positioned on the right */}
+      <div className="flex items-start justify-end min-h-screen p-4 pt-20">
+        <Card className="relative w-full max-w-md z-[10000] max-h-[80vh] overflow-y-auto bg-white/95 backdrop-blur-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -142,7 +137,8 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
             취소
           </Button>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
