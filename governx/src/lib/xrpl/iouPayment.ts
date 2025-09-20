@@ -1,31 +1,35 @@
 import { Client, Wallet } from "xrpl";
 
 /**
- * XRPL Payment Functions for GovernX
- * Handles XRP payments for project investments
+ * IOU Token Payment Functions for GovernX
+ * Handles IOU token payments for project investments
  */
 
-export interface PaymentResult {
+export interface IOUPaymentResult {
   success: boolean;
   txHash?: string;
   error?: string;
-  senderBalance?: number;
-  receiverBalance?: number;
+  senderBalance?: any;
+  receiverBalance?: any;
 }
 
 /**
- * Send XRP payment
+ * Send IOU token payment
  * @param senderSeed Sender's seed (starts with 's')
  * @param receiverAddr Receiver's classic address (starts with 'r')
- * @param amountXRP Amount to send in XRP
+ * @param tokenSymbol Token symbol (e.g., 'USDC', 'USDT')
+ * @param tokenIssuer Token issuer address
+ * @param amount Amount to send
  * @param network Network to use ('testnet' or 'mainnet')
  */
-export async function sendXRPPayment(
-  senderSeed: string, 
-  receiverAddr: string, 
-  amountXRP: number,
+export async function sendIOUPayment(
+  senderSeed: string,
+  receiverAddr: string,
+  tokenSymbol: string,
+  tokenIssuer: string,
+  amount: string,
   network: 'testnet' | 'mainnet' = 'testnet'
-): Promise<PaymentResult> {
+): Promise<IOUPaymentResult> {
   // Network configuration
   const networkUrl = network === 'testnet' 
     ? "wss://s.devnet.rippletest.net:51233"
@@ -47,51 +51,34 @@ export async function sendXRPPayment(
       };
     }
 
-    if (amountXRP <= 0) {
+    if (!tokenSymbol || !tokenIssuer) {
+      return {
+        success: false,
+        error: 'Token symbol and issuer are required'
+      };
+    }
+
+    if (parseFloat(amount) <= 0) {
       return {
         success: false,
         error: 'Amount must be greater than 0'
       };
     }
 
-
-    // Get balance helper function
-    const getBalanceXRP = async (classicAddress: string): Promise<number> => {
-      try {
-        const accountInfo = await client.request({
-          command: "account_info",
-          account: classicAddress,
-          ledger_index: "validated"
-        });
-        return parseFloat(accountInfo.result.account_data.Balance) / 1_000_000;
-      } catch (error) {
-        console.error(`Error getting balance for ${classicAddress}:`, error);
-        return 0;
-      }
-    };
-
-    // Check sender balance before payment
-    const senderBalance = await getBalanceXRP(senderWallet.classicAddress);
-    if (senderBalance < amountXRP) {
-      return {
-        success: false,
-        error: `Insufficient balance. Available: ${senderBalance} XRP, Required: ${amountXRP} XRP`
-      };
-    }
-
-    // Convert XRP to drops (1 XRP = 1,000,000 drops)
-    const amountDrops = (amountXRP * 1_000_000).toString();
-
-    // Create payment transaction
-    const paymentTx: any = {
+    // Create IOU payment transaction
+    const iouPaymentTx: any = {
       TransactionType: "Payment",
       Account: senderWallet.classicAddress,
       Destination: receiverAddr,
-      Amount: amountDrops
+      Amount: {
+        currency: tokenSymbol,
+        issuer: tokenIssuer,
+        value: amount,
+      }
     };
 
     // Auto-fill and sign transaction
-    const prepared = await client.autofill(paymentTx);
+    const prepared = await client.autofill(iouPaymentTx);
     const signed = senderWallet.sign(prepared);
 
     // Submit and wait for consensus with timeout
@@ -119,19 +106,12 @@ export async function sendXRPPayment(
       };
     }
 
-    // Get final balances
-    const finalSenderBalance = await getBalanceXRP(senderWallet.classicAddress);
-    const finalReceiverBalance = await getBalanceXRP(receiverAddr);
-
     return {
       success: true,
-      txHash: signed.hash,
-      senderBalance: finalSenderBalance,
-      receiverBalance: finalReceiverBalance
+      txHash: signed.hash
     };
 
   } catch (error) {
-    console.error('Payment error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -141,16 +121,19 @@ export async function sendXRPPayment(
   }
 }
 
-
 /**
- * Get account balance in XRP
+ * Get IOU token balance
  * @param address Classic address to check
+ * @param tokenSymbol Token symbol
+ * @param tokenIssuer Token issuer address
  * @param network Network to use
  */
-export async function getAccountBalance(
-  address: string, 
+export async function getIOUBalance(
+  address: string,
+  tokenSymbol: string,
+  tokenIssuer: string,
   network: 'testnet' | 'mainnet' = 'testnet'
-): Promise<{ balance: number; error?: string }> {
+): Promise<{ balance: string; error?: string }> {
   const networkUrl = network === 'testnet' 
     ? "wss://s.devnet.rippletest.net:51233"
     : "wss://xrplcluster.com";
@@ -160,19 +143,26 @@ export async function getAccountBalance(
   try {
     await client.connect();
 
-    const accountInfo = await client.request({
-      command: "account_info",
+    const accountLines = await client.request({
+      command: "account_lines",
       account: address,
       ledger_index: "validated"
     });
 
-    const balance = parseFloat(accountInfo.result.account_data.Balance) / 1_000_000;
+    // Find the specific token balance
+    const tokenLine = accountLines.result.lines.find((line: any) => 
+      line.currency === tokenSymbol && line.account === tokenIssuer
+    );
+
+    if (tokenLine) {
+      return { balance: tokenLine.balance };
+    } else {
+      return { balance: "0" };
+    }
     
-    return { balance };
   } catch (error) {
-    console.error('Balance check error:', error);
     return { 
-      balance: 0, 
+      balance: "0", 
       error: error instanceof Error ? error.message : 'Failed to get balance' 
     };
   } finally {

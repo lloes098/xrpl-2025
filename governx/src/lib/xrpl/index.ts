@@ -7,9 +7,12 @@
 export * from './payment';
 export * from './wallet';
 export * from './tokens';
+export * from './iouPayment';
+export * from './trustline';
 
 // Advanced features
 export * from './features/mpTokens';
+export * from './features/escrow';
 
 // Re-export commonly used types
 export type { PaymentResult } from './payment';

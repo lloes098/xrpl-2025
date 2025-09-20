@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
 export const dynamic = "force-dynamic";
 import { useParams, useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import OverviewTab from "../../../components/project/OverviewTab";
 import { TransparencyChart } from "../../../components/project/TransparencyChart";
 import { useWalletStore } from "@/store/walletStore";
-import { sendXRPPayment, sendIOUToken } from "@/lib/xrpl";
+import { sendXRPPayment, sendIOUToken, sendIOUPayment, setupTrustline, checkTrustline, createProjectEscrow, releaseProjectFunds, refundProjectFunds } from "@/lib/xrpl";
 import { 
   ArrowLeft,
   Heart,
@@ -36,14 +36,22 @@ import {
   X,
   Trash2,
   RefreshCw,
-  Send
+  Send,
+  Sparkles
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Mock project data - 실제로는 API에서 가져올 것
 const getProjectById = (id: string) => {
-  // 먼저 로컬 스토리지에서 사용자가 생성한 프로젝트 확인
+  // 먼저 allProjects에서 업데이트된 프로젝트 확인
   if (typeof window !== 'undefined') {
+    const allProjects = JSON.parse(localStorage.getItem('allProjects') || '[]');
+    const updatedProject = allProjects.find((p: { id: string }) => p.id === id);
+    if (updatedProject) {
+      return updatedProject;
+    }
+    
+    // 그 다음 userProjects에서 확인
     const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
     const userProject = userProjects.find((p: { id: string }) => p.id === id);
     if (userProject) {
@@ -104,14 +112,6 @@ const getProjectById = (id: string) => {
       smartContractVerified: true,
       escrowProtected: true,
       autoRefund: true,
-      fundingHistory: [
-        { date: "2024-01-15", amount: 5000, backers: 12, txHash: "0x1234..." },
-        { date: "2024-01-20", amount: 15000, backers: 45, txHash: "0x5678..." },
-        { date: "2024-01-25", amount: 25000, backers: 89, txHash: "0x9abc..." },
-        { date: "2024-02-01", amount: 35000, backers: 134, txHash: "0xdef0..." },
-        { date: "2024-02-05", amount: 55000, backers: 189, txHash: "0x1234..." },
-        { date: "2024-02-10", amount: 75000, backers: 234, txHash: "0x5678..." }
-      ],
       updates: [
         {
           id: "1",
@@ -990,13 +990,24 @@ export default function ProjectDetailPage() {
   const [userProofTokens, setUserProofTokens] = useState(0);
   const [showFundingModal, setShowFundingModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("XRP");
+  const [selectedToken, setSelectedToken] = useState<{symbol: string, issuer: string} | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [fundingError, setFundingError] = useState("");
+  const [fundingSuccess, setFundingSuccess] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [escrowInfo, setEscrowInfo] = useState<{sequence?: number, finishAfter?: number, cancelAfter?: number} | null>(null);
+  const [showEscrowModal, setShowEscrowModal] = useState(false);
   
   // Use wallet store
   const { isConnected, address, secret, walletType, network, balance, updateBalance } = useWalletStore();
   
   const project = getProjectById(params.id as string);
+  
+  // Force re-render when refreshTrigger changes
+  React.useEffect(() => {
+    // This will cause the component to re-render and get fresh project data
+  }, [refreshTrigger]);
 
   // 프로젝트가 사용자가 생성한 것인지 확인
   const isUserProject = () => {
@@ -1046,7 +1057,6 @@ export default function ProjectDetailPage() {
     setIsLoading(true);
     // 실제로는 XRPL 지갑 연결 로직
     setTimeout(() => {
-      setIsWalletConnected(true);
       setUserProofTokens(1500); // Mock 데이터
       setIsLoading(false);
       toast.success("지갑이 연결되었습니다!");
@@ -1055,17 +1065,20 @@ export default function ProjectDetailPage() {
 
   const handleFunding = () => {
     if (!isConnected) {
-      toast.error("먼저 지갑을 연결해주세요!");
+      setFundingError("먼저 지갑을 연결해주세요!");
       return;
     }
     if (!fundingAmount || parseFloat(fundingAmount) < 1) {
-      toast.error("최소 1 XRP 이상 투자해주세요!");
+      setFundingError("최소 1 XRP 이상 투자해주세요!");
       return;
     }
     if (parseFloat(fundingAmount) > balance.xrp) {
-      toast.error("잔액이 부족합니다!");
+      setFundingError("잔액이 부족합니다!");
       return;
     }
+    // Clear any previous errors and success messages
+    setFundingError("");
+    setFundingSuccess("");
     setShowFundingModal(true);
   };
 
@@ -1079,41 +1092,239 @@ export default function ProjectDetailPage() {
     
     try {
       // Get project creator's address (in real app, this would come from project data)
+      // Use a known testnet address that should work
       const projectCreatorAddress = project.escrowAddress || "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH";
       
-      // Send XRP payment
-      const paymentResult = await sendXRPPayment(
-        secret,
-        projectCreatorAddress,
-        parseFloat(fundingAmount),
-        network
-      );
+      // Send payment (XRP, RLUSD, or IOU token)
+      let paymentResult;
+      if (selectedCurrency === "XRP" || selectedCurrency === "RLUSD") {
+        // XRP and RLUSD are native currencies, use XRP payment
+        paymentResult = await sendXRPPayment(
+          secret,
+          projectCreatorAddress,
+          parseFloat(fundingAmount),
+          network
+        );
+      } else if (selectedToken) {
+        // Check if trustline exists for IOU token
+        const trustlineCheck = await checkTrustline(
+          address!,
+          selectedToken.symbol,
+          selectedToken.issuer,
+          network
+        );
+
+        if (!trustlineCheck.exists) {
+          // Setup trustline first
+          setFundingError("토큰을 사용하기 위해 먼저 트러스트라인을 설정합니다...");
+          
+          const trustlineResult = await setupTrustline(
+            secret,
+            selectedToken.issuer,
+            selectedToken.symbol,
+            "1000000", // 1M limit
+            network
+          );
+
+          if (!trustlineResult.success) {
+            setFundingError(`트러스트라인 설정 실패: ${trustlineResult.error}`);
+            return;
+          }
+
+          setFundingError(""); // Clear error message
+        }
+
+        // Now send IOU payment
+        paymentResult = await sendIOUPayment(
+          secret,
+          projectCreatorAddress,
+          selectedToken.symbol,
+          selectedToken.issuer,
+          fundingAmount,
+          network
+        );
+      } else {
+        setFundingError("토큰 정보를 찾을 수 없습니다!");
+        return;
+      }
 
       if (paymentResult.success) {
-        // Update project funding amount (in real app, this would be done via API)
+        // Update project funding amount in localStorage
         if (typeof window !== 'undefined') {
+          // Update user-created projects
           const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-          const projectIndex = userProjects.findIndex((p: { id: string }) => p.id === params.id);
+          const userProjectIndex = userProjects.findIndex((p: { id: string }) => p.id === params.id);
           
-          if (projectIndex !== -1) {
-            userProjects[projectIndex].currentAmount += parseFloat(fundingAmount);
-            userProjects[projectIndex].backers += 1;
+          if (userProjectIndex !== -1) {
+            userProjects[userProjectIndex].currentAmount += parseFloat(fundingAmount);
+            userProjects[userProjectIndex].backers += 1;
             localStorage.setItem('userProjects', JSON.stringify(userProjects));
           }
+          
+          // Update all projects (including mock projects) in a separate storage
+          const allProjects = JSON.parse(localStorage.getItem('allProjects') || '[]');
+          let projectIndex = allProjects.findIndex((p: { id: string }) => p.id === params.id);
+          
+          // Create funding history entry
+          const fundingEntry = {
+            amount: parseFloat(fundingAmount),
+            currency: selectedCurrency,
+            token: selectedToken,
+            date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+            backers: 1,
+            txHash: paymentResult.txHash || 'Unknown'
+          };
+          
+          if (projectIndex === -1) {
+            // If project not in allProjects, add it (for mock projects)
+            const currentProject = getProjectById(params.id as string);
+            if (currentProject) {
+              allProjects.push({
+                ...currentProject,
+                currentAmount: parseFloat(fundingAmount),
+                backers: 1,
+                fundingHistory: [fundingEntry]
+              });
+            }
+          } else {
+            // Update existing project
+            allProjects[projectIndex].currentAmount += parseFloat(fundingAmount);
+            allProjects[projectIndex].backers += 1;
+            
+            // Add to funding history
+            if (!allProjects[projectIndex].fundingHistory) {
+              allProjects[projectIndex].fundingHistory = [];
+            }
+            allProjects[projectIndex].fundingHistory.unshift(fundingEntry); // Add to beginning
+            
+            // Keep only last 10 entries to avoid too much data
+            if (allProjects[projectIndex].fundingHistory.length > 10) {
+              allProjects[projectIndex].fundingHistory = allProjects[projectIndex].fundingHistory.slice(0, 10);
+            }
+          }
+          
+          localStorage.setItem('allProjects', JSON.stringify(allProjects));
         }
 
         // Update wallet balance
         await updateBalance();
         
-        toast.success(`투자가 성공적으로 완료되었습니다! TX: ${paymentResult.txHash}`);
-        setShowFundingModal(false);
-        setFundingAmount("");
+        // Show success message in funding section
+        setFundingError("");
+        setFundingSuccess(`투자가 성공적으로 완료되었습니다! TX: ${paymentResult.txHash}`);
+      setShowFundingModal(false);
+      setFundingAmount("");
+        
+        // Trigger refresh to update project data
+        setRefreshTrigger(prev => prev + 1);
       } else {
-        toast.error(`투자 실패: ${paymentResult.error}`);
+        setFundingError(`투자 실패: ${paymentResult.error}`);
       }
     } catch (error) {
-      console.error('Funding error:', error);
-      toast.error("투자 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setFundingError("투자 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const handleCreateEscrow = async () => {
+    if (!secret || !address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      // Create escrow for project funding with a smaller test amount
+      const testAmount = 10; // Test with 10 XRP instead of full target amount
+      
+      const escrowResult = await createProjectEscrow(
+        secret,
+        address, // Project creator receives funds
+        testAmount, // Use smaller test amount
+        selectedCurrency,
+        selectedToken?.issuer,
+        30, // 30 days to release
+        60, // 60 days to cancel
+        network
+      );
+
+      if (escrowResult.success) {
+        setEscrowInfo({
+          sequence: escrowResult.sequence,
+          finishAfter: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60),
+          cancelAfter: Math.floor(Date.now() / 1000) + (60 * 24 * 60 * 60)
+        });
+        setFundingSuccess(`에스크로가 성공적으로 생성되었습니다! (테스트 금액: ${testAmount} ${selectedCurrency}) TX: ${escrowResult.txHash}`);
+        setShowEscrowModal(false);
+      } else {
+        setFundingError(`에스크로 생성 실패: ${escrowResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("에스크로 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReleaseFunds = async () => {
+    if (!secret || !address || !escrowInfo?.sequence) {
+      setFundingError("에스크로 정보를 찾을 수 없습니다!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const releaseResult = await releaseProjectFunds(
+        secret,
+        address,
+        escrowInfo.sequence,
+        network
+      );
+
+      if (releaseResult.success) {
+        setFundingSuccess(`자금이 성공적으로 해제되었습니다! TX: ${releaseResult.txHash}`);
+        setEscrowInfo(null);
+      } else {
+        setFundingError(`자금 해제 실패: ${releaseResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("자금 해제 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefundFunds = async () => {
+    if (!secret || !address || !escrowInfo?.sequence) {
+      setFundingError("에스크로 정보를 찾을 수 없습니다!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const refundResult = await refundProjectFunds(
+        secret,
+        address,
+        escrowInfo.sequence,
+        network
+      );
+
+      if (refundResult.success) {
+        setFundingSuccess(`자금이 성공적으로 환불되었습니다! TX: ${refundResult.txHash}`);
+        setEscrowInfo(null);
+      } else {
+        setFundingError(`자금 환불 실패: ${refundResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("자금 환불 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -1313,10 +1524,25 @@ export default function ProjectDetailPage() {
                             />
                             <select
                               value={selectedCurrency}
-                              onChange={(e) => setSelectedCurrency(e.target.value)}
-                              className="px-4 py-3 glass rounded-xl text-white border border-white/10 focus:border-purple-500/50 focus:outline-none"
+                              onChange={(e) => {
+                                setSelectedCurrency(e.target.value);
+                                if (e.target.value === "XRP" || e.target.value === "RLUSD") {
+                                  setSelectedToken(null);
+                                } else {
+                                  // Set default token issuer for IOU tokens only
+                                  const tokenMap: {[key: string]: {symbol: string, issuer: string}} = {
+                                    "USDC": {symbol: "USDC", issuer: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"},
+                                    "USDT": {symbol: "USDT", issuer: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"}
+                                  };
+                                  setSelectedToken(tokenMap[e.target.value] || null);
+                                }
+                              }}
+                              className="px-4 py-3 pr-8 glass rounded-xl text-white border border-white/10 focus:border-purple-500/50 focus:outline-none appearance-none bg-no-repeat bg-right bg-[length:16px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgNkw4IDEwTDEyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=')]"
                             >
                               <option value="XRP">XRP</option>
+                              <option value="USDC">USDC</option>
+                              <option value="USDT">USDT</option>
+                              <option value="RLUSD">RLUSD</option>
                             </select>
                           </div>
                         </div>
@@ -1336,6 +1562,27 @@ export default function ProjectDetailPage() {
                           </div>
                         </div>
 
+                        {/* Error Message Display */}
+                        {fundingError && (
+                          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                              <span className="text-red-400 text-sm">{fundingError}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Success Message Display */}
+                        {fundingSuccess && (
+                          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-green-400 text-sm">{fundingSuccess}</span>
+                            </div>
+                          </div>
+                        )}
+
+
                         <Button 
                           variant="primary" 
                           onClick={handleFunding}
@@ -1344,6 +1591,57 @@ export default function ProjectDetailPage() {
                           <Send className="w-5 h-5" />
                           투자하기
                         </Button>
+
+                        {/* Escrow Management Section - Only for project creators */}
+                        {isUserProject() && (
+                          <div className="mt-6 p-4 glass rounded-lg border border-purple-500/30">
+                            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                              <Shield className="w-5 h-5 text-purple-400" />
+                              에스크로 관리
+                            </h3>
+                            
+                            {!escrowInfo ? (
+                              <div className="space-y-3">
+                                <p className="text-sm text-gray-400">
+                                  프로젝트 자금을 안전하게 관리하기 위해 에스크로를 설정하세요.
+                                </p>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setShowEscrowModal(true)}
+                                  className="w-full"
+                                >
+                                  에스크로 설정하기
+                        </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="text-sm text-gray-400">
+                                  <p>에스크로 설정됨 (Sequence: {escrowInfo.sequence})</p>
+                                  <p>해제 가능: {new Date(escrowInfo.finishAfter! * 1000).toLocaleDateString()}</p>
+                                  <p>취소 가능: {new Date(escrowInfo.cancelAfter! * 1000).toLocaleDateString()}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={handleReleaseFunds}
+                                    disabled={isLoading}
+                                    className="flex-1"
+                                  >
+                                    자금 해제
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={handleRefundFunds}
+                                    disabled={isLoading}
+                                    className="flex-1"
+                                  >
+                                    환불하기
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -1360,15 +1658,19 @@ export default function ProjectDetailPage() {
                   <CardContent>
                     <div className="space-y-3">
                       {project.fundingHistory && project.fundingHistory.length > 0 ? (
-                        project.fundingHistory.map((item: { amount: number; date: string; backers: number; txHash: string }, index: number) => (
+                        project.fundingHistory.map((item: { amount: number; currency?: string; token?: any; date: string; backers: number; txHash: string }, index: number) => (
                           <div key={index} className="flex justify-between items-center p-3 glass rounded-lg">
                             <div>
-                              <p className="text-white font-semibold">{item.amount.toLocaleString()} XRP</p>
+                              <p className="text-white font-semibold">
+                                {item.amount.toLocaleString()} {item.currency || 'XRP'}
+                              </p>
                               <p className="text-sm text-gray-400">{item.date}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-sm text-gray-400">{item.backers}명 참여</p>
-                              <p className="text-xs text-gray-500 font-mono">{item.txHash}</p>
+                              <p className="text-xs text-gray-500 font-mono">
+                                {item.txHash.length > 8 ? `${item.txHash.substring(0, 8)}...` : item.txHash}
+                              </p>
                             </div>
                           </div>
                         ))
@@ -1479,13 +1781,13 @@ export default function ProjectDetailPage() {
                             <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                                 <FileText className="w-6 h-6 text-white" />
-                              </div>
+                        </div>
                               <div>
                                 <h3 className="text-white font-semibold text-lg">{project.businessPlan.fileName}</h3>
                                 <p className="text-gray-400 text-sm">
                                   {(project.businessPlan.fileSize / 1024 / 1024).toFixed(2)} MB
                                 </p>
-                              </div>
+                      </div>
                             </div>
                             <Button
                               variant="primary"
@@ -1732,6 +2034,92 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
 
+            {/* MPToken Information */}
+            {project.mptoken && project.mptoken.created && (
+              <Card className="glass border-0 shadow-xl">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white flex items-center gap-2 text-lg">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    MPToken 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-gray-400 text-sm">토큰 이름</span>
+                        <p className="text-white font-semibold">{project.mptoken.name}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-sm">토큰 심볼</span>
+                        <p className="text-white font-semibold">{project.mptoken.symbol}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-sm">총 발행량</span>
+                        <p className="text-white font-semibold">{project.mptoken.totalSupply.toLocaleString()} {project.mptoken.symbol}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-gray-400 text-sm">토큰 설명</span>
+                        <p className="text-white text-sm">{project.mptoken.description || "설명 없음"}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 text-sm">발행 ID</span>
+                        <p className="text-white text-xs font-mono break-all">{project.mptoken.issuanceId}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Token Distribution */}
+                  <div className="space-y-3">
+                    <h5 className="text-white font-semibold">토큰 배분 계획</h5>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex justify-between items-center p-3 glass rounded-lg">
+                        <span className="text-gray-300 text-sm">투자자</span>
+                        <span className="text-white font-semibold">{project.mptoken.distribution.investors}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 glass rounded-lg">
+                        <span className="text-gray-300 text-sm">팀</span>
+                        <span className="text-white font-semibold">{project.mptoken.distribution.team}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 glass rounded-lg">
+                        <span className="text-gray-300 text-sm">커뮤니티</span>
+                        <span className="text-white font-semibold">{project.mptoken.distribution.community}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 glass rounded-lg">
+                        <span className="text-gray-300 text-sm">보유분</span>
+                        <span className="text-white font-semibold">{project.mptoken.distribution.reserves}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Token Benefits */}
+                  <div className="space-y-3">
+                    <h5 className="text-white font-semibold">토큰 혜택</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="p-3 glass rounded-lg">
+                        <h6 className="text-white font-semibold text-sm mb-1">투표권</h6>
+                        <p className="text-gray-400 text-xs">프로젝트 의사결정에 참여</p>
+                      </div>
+                      <div className="p-3 glass rounded-lg">
+                        <h6 className="text-white font-semibold text-sm mb-1">수익 분배</h6>
+                        <p className="text-gray-400 text-xs">프로젝트 수익의 일정 부분</p>
+                      </div>
+                      <div className="p-3 glass rounded-lg">
+                        <h6 className="text-white font-semibold text-sm mb-1">특별 혜택</h6>
+                        <p className="text-gray-400 text-xs">완성품 우선 구매권 등</p>
+                      </div>
+                      <div className="p-3 glass rounded-lg">
+                        <h6 className="text-white font-semibold text-sm mb-1">거버넌스</h6>
+                        <p className="text-gray-400 text-xs">프로젝트 방향성 제안권</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Security Status */}
             <Card className="glass border-0 shadow-xl">
               <CardHeader className="pb-4">
@@ -1810,6 +2198,122 @@ export default function ProjectDetailPage() {
                   >
                     {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     {isLoading ? "처리중..." : "투자하기"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Escrow Setup Modal */}
+        {showEscrowModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-lg mx-4 glass border-0 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-purple-400" />
+                  에스크로 설정
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      에스크로 통화
+                    </label>
+                    <select
+                      value={selectedCurrency}
+                      onChange={(e) => {
+                        setSelectedCurrency(e.target.value);
+                        if (e.target.value === "XRP" || e.target.value === "RLUSD") {
+                          setSelectedToken(null);
+                        } else {
+                          const tokenMap: {[key: string]: {symbol: string, issuer: string}} = {
+                            "USDC": {symbol: "USDC", issuer: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"},
+                            "USDT": {symbol: "USDT", issuer: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"}
+                          };
+                          setSelectedToken(tokenMap[e.target.value] || null);
+                        }
+                      }}
+                      className="w-full px-4 py-3 pr-8 glass rounded-xl text-white border border-white/10 focus:border-purple-500/50 focus:outline-none appearance-none bg-no-repeat bg-right bg-[length:16px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgNkw4IDEwTDEyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=')]"
+                    >
+                      <option value="XRP">XRP</option>
+                      <option value="USDC">USDC</option>
+                      <option value="USDT">USDT</option>
+                      <option value="RLUSD">RLUSD</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      에스크로 금액
+                    </label>
+                    <input
+                      type="number"
+                      value="10"
+                      disabled
+                      className="w-full px-4 py-3 glass rounded-xl text-white border border-white/10 bg-gray-800/50"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">테스트용으로 10 {selectedCurrency}가 에스크로됩니다</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        자금 해제 기간 (일)
+                      </label>
+                      <input
+                        type="number"
+                        value="30"
+                        disabled
+                        className="w-full px-4 py-3 glass rounded-xl text-white border border-white/10 bg-gray-800/50"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">30일 후 자금 해제 가능</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        환불 기간 (일)
+                      </label>
+                      <input
+                        type="number"
+                        value="60"
+                        disabled
+                        className="w-full px-4 py-3 glass rounded-xl text-white border border-white/10 bg-gray-800/50"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">60일 후 환불 가능</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 glass rounded-lg border border-purple-500/30">
+                  <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-400" />
+                    에스크로 보호 기능
+                  </h4>
+                  <ul className="text-sm text-gray-300 space-y-1">
+                    <li>• 투자자 자금을 안전하게 보관</li>
+                    <li>• 목표 달성 시 자동으로 자금 해제</li>
+                    <li>• 프로젝트 실패 시 자동 환불</li>
+                    <li>• 모든 거래가 블록체인에 기록</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowEscrowModal(false)}
+                    className="flex-1"
+                  >
+                    취소
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    onClick={handleCreateEscrow}
+                    disabled={isLoading}
+                    className="flex-1 gap-2"
+                  >
+                    {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                    {isLoading ? "설정 중..." : "에스크로 설정"}
                   </Button>
                 </div>
               </CardContent>
