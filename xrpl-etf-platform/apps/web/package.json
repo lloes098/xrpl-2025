@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.89.0",
-    "@xrpl-etf/types": "workspace:*",
-    "@xrpl-etf/xrpl-sdk": "workspace:*",
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
     "framer-motion": "^10.18.0",
