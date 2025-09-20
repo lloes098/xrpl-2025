@@ -16,7 +16,7 @@
   },
   "include": [
     "*.ts"
-  ],
+, "flowexample/mpt-complete-flow.ts"  ],
   "exclude": [
     "node_modules",
     "dist"
