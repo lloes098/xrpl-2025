@@ -13,6 +13,9 @@ export * from './trustline';
 // Advanced features
 export * from './features/mpTokens';
 export * from './features/escrow';
+export * from './features/escrowCompletion';
+export * from './features/mptCompleteFlow';
+export * from './features/balance';
 
 // Re-export commonly used types
 export type { PaymentResult } from './payment';

@@ -135,7 +135,11 @@ export const useWalletStore = create<WalletState>()(
           balance: { xrp: 0, rlusd: 0 },
           networkId: null,
           walletType: null,
+          network: 'testnet',
         });
+        
+        // Clear localStorage
+        localStorage.removeItem('wallet-storage');
       },
 
       updateBalance: async () => {
@@ -187,7 +191,12 @@ export const useWalletStore = create<WalletState>()(
     {
       name: 'wallet-storage',
       partialize: (state) => ({
+        isConnected: state.isConnected,
         address: state.address,
+        secret: state.secret,
+        walletType: state.walletType,
+        network: state.network,
+        networkId: state.networkId,
         userType: state.userType,
         profile: state.profile,
       }),

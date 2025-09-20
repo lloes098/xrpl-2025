@@ -45,7 +45,15 @@ export class BalanceManager {
    * Connect to XRPL network
    */
   async connect(): Promise<void> {
-    await this.client.connect();
+    try {
+      if (!this.client.isConnected()) {
+        await this.client.connect();
+        console.log('Connected to XRPL network:', this.network);
+      }
+    } catch (error) {
+      console.error('Failed to connect to XRPL network:', error);
+      throw new Error(`Network connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
@@ -67,8 +75,12 @@ export class BalanceManager {
         command: "account_info",
         account: address,
         ledger_index: "validated",
-        strict: true,
+        strict: false, // Change to false to handle non-existent accounts
       });
+
+      if (!response.result.account_data) {
+        throw new Error('Account not found');
+      }
 
       const balanceDrops = response.result.account_data.Balance;
       const balanceXRP = Number(balanceDrops) / 1_000_000;
@@ -78,7 +90,12 @@ export class BalanceManager {
         xrp: balanceXRP,
       };
     } catch (error) {
-      throw new Error(`Failed to get XRP balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('XRP balance error:', error);
+      // Return zero balance for non-existent accounts
+      return {
+        drops: "0",
+        xrp: 0,
+      };
     } finally {
       await this.disconnect();
     }
@@ -98,6 +115,10 @@ export class BalanceManager {
         ledger_index: "validated",
       });
 
+      if (!response.result.lines) {
+        return [];
+      }
+
       return response.result.lines.map((line: any) => ({
         currency: line.currency,
         issuer: line.account,
@@ -108,7 +129,9 @@ export class BalanceManager {
         quality_out: line.quality_out || 0,
       }));
     } catch (error) {
-      throw new Error(`Failed to get token balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Token balance error:', error);
+      // Return empty array for errors
+      return [];
     } finally {
       await this.disconnect();
     }
@@ -153,7 +176,13 @@ export class BalanceManager {
         tokens: tokenBalances
       };
     } catch (error) {
-      throw new Error(`Failed to get complete balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Complete balance error:', error);
+      // Return default balance info for errors
+      return {
+        xrp: 0,
+        drops: "0",
+        tokens: []
+      };
     }
   }
 
@@ -186,7 +215,13 @@ export class BalanceManager {
         throw new Error('Issuer required for IOU tokens');
       }
     } catch (error) {
-      throw new Error(`Failed to get currency balance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Currency balance error:', error);
+      // Return zero balance for errors
+      return {
+        balance: 0,
+        currency: currency,
+        issuer: issuer,
+      };
     }
   }
 }

@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import OverviewTab from "../../../components/project/OverviewTab";
 import { TransparencyChart } from "../../../components/project/TransparencyChart";
 import { useWalletStore } from "@/store/walletStore";
-import { sendXRPPayment, sendIOUToken, sendIOUPayment, setupTrustline, checkTrustline, createProjectEscrow, releaseProjectFunds, refundProjectFunds } from "@/lib/xrpl";
+import { sendXRPPayment, sendIOUToken, sendIOUPayment, setupTrustline, checkTrustline, createProjectEscrow, releaseProjectFunds, refundProjectFunds, getCompleteBalance, getCurrencyBalance, autoFinishEscrow, autoCancelEscrow, activateMPT, completeMPTLifecycle, cancelMPTLifecycle, distributeMPTTokens } from "@/lib/xrpl";
 import { 
   ArrowLeft,
   Heart,
@@ -998,6 +998,8 @@ export default function ProjectDetailPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [escrowInfo, setEscrowInfo] = useState<{sequence?: number, finishAfter?: number, cancelAfter?: number} | null>(null);
   const [showEscrowModal, setShowEscrowModal] = useState(false);
+  const [realTimeBalance, setRealTimeBalance] = useState<{xrp: number, tokens: any[]} | null>(null);
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   
   // Use wallet store
   const { isConnected, address, secret, walletType, network, balance, updateBalance } = useWalletStore();
@@ -1330,6 +1332,262 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleAutoFinishEscrow = async () => {
+    if (!secret || !address || !escrowInfo?.sequence) {
+      setFundingError("에스크로 정보를 찾을 수 없습니다!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const autoFinishResult = await autoFinishEscrow(
+        secret,
+        address,
+        escrowInfo.sequence,
+        network
+      );
+
+      if (autoFinishResult.success) {
+        setFundingSuccess(`에스크로가 자동으로 해제되었습니다! TX: ${autoFinishResult.txHash}`);
+        setEscrowInfo(null);
+      } else {
+        setFundingError(`자동 해제 실패: ${autoFinishResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("자동 해제 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAutoCancelEscrow = async () => {
+    if (!secret || !address || !escrowInfo?.sequence) {
+      setFundingError("에스크로 정보를 찾을 수 없습니다!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const autoCancelResult = await autoCancelEscrow(
+        secret,
+        address,
+        escrowInfo.sequence,
+        network
+      );
+
+      if (autoCancelResult.success) {
+        setFundingSuccess(`에스크로가 자동으로 취소되었습니다! TX: ${autoCancelResult.txHash}`);
+        setEscrowInfo(null);
+      } else {
+        setFundingError(`자동 취소 실패: ${autoCancelResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("자동 취소 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleActivateMPT = async () => {
+    if (!secret || !address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+    
+    if (!project.mptoken?.issuanceId) {
+      setFundingError("이 프로젝트는 MPToken이 설정되지 않았습니다. 프로젝트 생성 시 MPToken을 설정해야 합니다.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const activateResult = await activateMPT(
+        secret,
+        project.mptoken.issuanceId,
+        network
+      );
+
+      if (activateResult.success) {
+        setFundingSuccess(`MPT가 활성화되었습니다! TX: ${activateResult.txHash}`);
+      } else {
+        setFundingError(`MPT 활성화 실패: ${activateResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("MPT 활성화 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteMPT = async () => {
+    if (!secret || !address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+    
+    if (!project.mptoken?.issuanceId) {
+      setFundingError("이 프로젝트는 MPToken이 설정되지 않았습니다. 프로젝트 생성 시 MPToken을 설정해야 합니다.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const completionData = {
+        finalDistribution: {
+          totalRaised: project.currentAmount,
+          targetAmount: project.targetAmount,
+          completionRate: (project.currentAmount / project.targetAmount) * 100
+        },
+        profitSharing: {
+          totalProfit: project.currentAmount * 0.1, // 10% profit example
+          distributedToHolders: true
+        },
+        governanceResults: {
+          totalVotes: project.backers,
+          decisions: ['Project completed successfully']
+        },
+        specialBenefits: {
+          earlyBackerRewards: true,
+          exclusiveAccess: true
+        }
+      };
+
+      const completeResult = await completeMPTLifecycle(
+        secret,
+        project.mptoken.issuanceId,
+        completionData,
+        network
+      );
+
+      if (completeResult.success) {
+        setFundingSuccess(`MPT 생명주기가 완료되었습니다! TX: ${completeResult.txHash}`);
+      } else {
+        setFundingError(`MPT 완료 실패: ${completeResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("MPT 완료 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelMPT = async () => {
+    if (!secret || !address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+    
+    if (!project.mptoken?.issuanceId) {
+      setFundingError("이 프로젝트는 MPToken이 설정되지 않았습니다. 프로젝트 생성 시 MPToken을 설정해야 합니다.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const cancelResult = await cancelMPTLifecycle(
+        secret,
+        project.mptoken.issuanceId,
+        "Project cancelled by creator",
+        network
+      );
+
+      if (cancelResult.success) {
+        setFundingSuccess(`MPT가 취소되었습니다! TX: ${cancelResult.txHash}`);
+      } else {
+        setFundingError(`MPT 취소 실패: ${cancelResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("MPT 취소 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDistributeMPT = async () => {
+    if (!secret || !address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+    
+    if (!project.mptoken?.issuanceId) {
+      setFundingError("이 프로젝트는 MPToken이 설정되지 않았습니다. 프로젝트 생성 시 MPToken을 설정해야 합니다.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const recipients = [
+        {
+          address: address, // Creator gets team allocation
+          amount: Math.floor(project.mptoken.totalSupply * (project.mptoken.distribution.team / 100)),
+          role: 'team' as const
+        },
+        {
+          address: address, // Placeholder for investor addresses
+          amount: Math.floor(project.mptoken.totalSupply * (project.mptoken.distribution.investors / 100)),
+          role: 'investor' as const
+        }
+      ];
+
+      const distributeResult = await distributeMPTTokens(
+        secret,
+        project.mptoken.issuanceId,
+        recipients,
+        network
+      );
+
+      if (distributeResult.success) {
+        setFundingSuccess(`MPT 토큰이 배포되었습니다! TX: ${distributeResult.txHash}`);
+      } else {
+        setFundingError(`MPT 배포 실패: ${distributeResult.error}`);
+      }
+    } catch (error) {
+      setFundingError("MPT 배포 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefreshBalance = async () => {
+    if (!address) {
+      setFundingError("지갑을 연결해주세요!");
+      return;
+    }
+
+    setIsRefreshingBalance(true);
+    setFundingError("");
+    setFundingSuccess("");
+
+    try {
+      console.log('Fetching balance for address:', address, 'network:', network);
+      const balanceInfo = await getCompleteBalance(address, network);
+      console.log('Balance info received:', balanceInfo);
+      
+      setRealTimeBalance({
+        xrp: balanceInfo.xrp,
+        tokens: balanceInfo.tokens
+      });
+      setFundingSuccess(`잔액이 성공적으로 업데이트되었습니다! (XRP: ${balanceInfo.xrp.toFixed(6)}, 토큰: ${balanceInfo.tokens.length}개)`);
+    } catch (error) {
+      console.error('Balance refresh error:', error);
+      setFundingError(`잔액 조회 중 오류가 발생했습니다: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  };
+
   const handleVote = (proposalId: string, vote: "for" | "against") => {
     if (!isConnected) {
       toast.error("먼저 지갑을 연결해주세요!");
@@ -1497,18 +1755,36 @@ export default function ProjectDetailPage() {
                         <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-xl font-bold text-white mb-2">지갑 연결 필요</h3>
                         <p className="text-gray-400 mb-6">펀딩에 참여하려면 XRPL 지갑을 연결해주세요</p>
-                        <Button 
-                          variant="primary" 
-                          onClick={handleConnectWallet}
-                          disabled={isLoading}
-                          className="gap-2"
-                        >
-                          {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                          지갑 연결하기
-                        </Button>
+                        <div className="space-y-3">
+                          <Button 
+                            variant="primary" 
+                            onClick={handleConnectWallet}
+                            disabled={isLoading}
+                            className="gap-2 w-full"
+                          >
+                            {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                            지갑 연결하기
+                          </Button>
+                          <p className="text-xs text-gray-500">
+                            지갑 연결 후 브라우저를 새로고침해도 연결 상태가 유지됩니다
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
+                        {/* 지갑 연결 상태 표시 */}
+                        <div className="p-3 glass rounded-lg border border-green-500/20">
+                          <div className="flex items-center gap-2 text-green-400">
+                            <Wallet className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              {walletType === 'xrpl' ? 'XRPL 지갑' : walletType === 'xumm' ? 'XUMM 지갑' : 'MetaMask 지갑'} 연결됨
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            주소: {address?.substring(0, 8)}...{address?.substring(-8)}
+                          </p>
+                        </div>
+                        
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-2">
                             투자 금액
@@ -1592,6 +1868,57 @@ export default function ProjectDetailPage() {
                           투자하기
                         </Button>
 
+                        {/* Real-time Balance Section */}
+                        {isConnected && (
+                          <div className="mt-6 p-4 glass rounded-lg border border-blue-500/30">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-white font-semibold flex items-center gap-2">
+                                <Wallet className="w-5 h-5 text-blue-400" />
+                                실시간 잔액
+                              </h3>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handleRefreshBalance}
+                                disabled={isRefreshingBalance}
+                                className="gap-2"
+                              >
+                                {isRefreshingBalance ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4" />
+                                )}
+                                새로고침
+                        </Button>
+                            </div>
+                            
+                            {realTimeBalance ? (
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 glass rounded-lg">
+                                  <span className="text-gray-400">XRP 잔액</span>
+                                  <span className="text-white font-semibold">{realTimeBalance.xrp.toFixed(6)} XRP</span>
+                                </div>
+                                
+                                {realTimeBalance.tokens.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h4 className="text-gray-400 text-sm font-medium">IOU 토큰</h4>
+                                    {realTimeBalance.tokens.map((token, index) => (
+                                      <div key={index} className="flex justify-between items-center p-2 glass rounded-lg">
+                                        <span className="text-gray-300 text-sm">{token.currency}</span>
+                                        <span className="text-white text-sm font-semibold">{parseFloat(token.balance).toFixed(6)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <p className="text-gray-400 text-sm">잔액을 조회하려면 새로고침 버튼을 클릭하세요</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Escrow Management Section - Only for project creators */}
                         {isUserProject() && (
                           <div className="mt-6 p-4 glass rounded-lg border border-purple-500/30">
@@ -1620,23 +1947,43 @@ export default function ProjectDetailPage() {
                                   <p>해제 가능: {new Date(escrowInfo.finishAfter! * 1000).toLocaleDateString()}</p>
                                   <p>취소 가능: {new Date(escrowInfo.cancelAfter! * 1000).toLocaleDateString()}</p>
                                 </div>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    onClick={handleReleaseFunds}
-                                    disabled={isLoading}
-                                    className="flex-1"
-                                  >
-                                    자금 해제
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    onClick={handleRefundFunds}
-                                    disabled={isLoading}
-                                    className="flex-1"
-                                  >
-                                    환불하기
-                                  </Button>
+                                <div className="space-y-2">
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      variant="outline" 
+                                      onClick={handleReleaseFunds}
+                                      disabled={isLoading}
+                                      className="flex-1"
+                                    >
+                                      수동 해제
+                                    </Button>
+                                    <Button 
+                                      variant="outline" 
+                                      onClick={handleRefundFunds}
+                                      disabled={isLoading}
+                                      className="flex-1"
+                                    >
+                                      수동 환불
+                                    </Button>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      variant="primary" 
+                                      onClick={handleAutoFinishEscrow}
+                                      disabled={isLoading}
+                                      className="flex-1"
+                                    >
+                                      자동 해제
+                                    </Button>
+                                    <Button 
+                                      variant="destructive" 
+                                      onClick={handleAutoCancelEscrow}
+                                      disabled={isLoading}
+                                      className="flex-1"
+                                    >
+                                      자동 취소
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -2116,6 +2463,62 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* MPT 생명주기 관리 */}
+                  {isUserProject() && (
+                    <div className="space-y-4 pt-4 border-t border-gray-700">
+                      <h5 className="text-white font-semibold">MPT 생명주기 관리</h5>
+                      {project.mptoken?.issuanceId ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Button 
+                              variant="primary" 
+                              onClick={handleActivateMPT}
+                              disabled={isLoading}
+                              className="w-full"
+                            >
+                              MPT 활성화
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={handleDistributeMPT}
+                              disabled={isLoading}
+                              className="w-full"
+                            >
+                              토큰 배포
+                            </Button>
+                            <Button 
+                              variant="primary" 
+                              onClick={handleCompleteMPT}
+                              disabled={isLoading}
+                              className="w-full"
+                            >
+                              생명주기 완료
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              onClick={handleCancelMPT}
+                              disabled={isLoading}
+                              className="w-full"
+                            >
+                              MPT 취소
+                            </Button>
+                          </div>
+                          <div className="text-xs text-gray-400 space-y-1">
+                            <p>• <strong>활성화:</strong> MPT를 거래 및 거버넌스에 사용 가능하게 만듭니다</p>
+                            <p>• <strong>토큰 배포:</strong> 설정된 비율에 따라 토큰을 배포합니다</p>
+                            <p>• <strong>생명주기 완료:</strong> 프로젝트 완료 시 MPT 생명주기를 종료합니다</p>
+                            <p>• <strong>MPT 취소:</strong> 프로젝트 취소 시 MPT를 무효화합니다</p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-gray-400 text-sm mb-2">이 프로젝트는 MPToken이 설정되지 않았습니다.</p>
+                          <p className="text-gray-500 text-xs">MPToken은 프로젝트 생성 시에만 설정할 수 있습니다.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
