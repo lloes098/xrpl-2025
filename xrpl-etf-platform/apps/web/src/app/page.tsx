@@ -1,17 +1,4 @@
-'use client'
-
-import { useState, useEffect } from 'react'
-
 export default function Home() {
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  if (!isClient) {
-    return <div>Loading...</div>
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
