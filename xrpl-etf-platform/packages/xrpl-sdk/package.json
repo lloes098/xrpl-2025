@@ -1,0 +1,19 @@
+{
+  "name": "@xrpl-etf/xrpl-sdk",
+  "version": "1.0.0",
+  "description": "XRPL 클라이언트 래퍼",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "xrpl": "^2.7.0",
+    "@xrpl-etf/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
