@@ -5,6 +5,11 @@ Ripplize – XRPL 통합 크라우드펀딩 플랫폼
 Ripplize는 XRP Ledger(XRPL) 을 기반으로 한 완전 분산형 크라우드펀딩 플랫폼입니다.
 투명성, 보안성, 그리고 사용자 자율성을 핵심 가치로 하여, 다음과 같은 주요 기능들을 제공합니다.
 
+발표 자료: https://docs.google.com/presentation/d/1-Iu9Y5M-dgRfP1MgdO4Kxw-17HCeuIcM2Tk-cn8JasM/edit?usp=sharing
+데모영상: https://www.youtube.com/watch?v=iNH954ZDkiA&feature=youtu.be
+UI 사진: https://drive.google.com/drive/folders/1fjncgn67uOWxKFc3bBotgasNQztLnA_H
+서비스: https://xrpl-2025-3e1q-git-main-lloes098s-projects.vercel.app/
+
 ## 1. 지갑 연결 및 계정 관리
 
 XRPL.js Client 연결: Testnet/Mainnet 네트워크 자동 연결 및 실시간 블록체인 데이터 접근
