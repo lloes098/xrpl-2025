@@ -4,14 +4,15 @@
   "description": "XRPL 기반 ETF 플랫폼",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:web": "npm run build -w @xrpl-etf/web",
+    "vercel-build": "npm run build -w @xrpl-etf/web",
     "dev": "turbo run dev",
-    "dev:web": "pnpm --filter @xrpl-etf/web dev",
-    "dev:api": "pnpm --filter @xrpl-etf/api dev",
+    "dev:web": "npm run dev -w @xrpl-etf/web",
+    "dev:api": "npm run dev -w @xrpl-etf/api",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",
@@ -23,7 +24,6 @@
     "prettier": "^3.0.0",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@8.0.0",
   "engines": {
     "node": ">=18"
   }

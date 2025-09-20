@@ -1,9 +1,0 @@
-{
-  "name": "@xrpl-etf/xrpl-sdk",
-  "version": "1.0.0",
-  "description": "XRPL 클라이언트 래퍼",
-  "main": "index.js",
-  "scripts": {},
-  "dependencies": {},
-  "devDependencies": {}
-}
