@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Progress } from "../../../components/ui/Progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/Tabs";
 import OverviewTab from "../../../components/project/OverviewTab";
 import { 
@@ -15,33 +14,23 @@ import {
   Heart,
   Share2,
   DollarSign,
-  Users,
-  Clock,
   Target,
   Calendar,
   User,
   MapPin,
-  ExternalLink,
   TrendingUp,
   Shield,
-  MessageCircle,
   Star,
-  Zap,
   Coins,
   Vote,
   FileText,
   BarChart3,
   Wallet,
   CheckCircle,
-  AlertCircle,
   X,
-  Plus,
-  Minus,
-  Send,
-  Eye,
-  Download,
+  Trash2,
   RefreshCw,
-  Trash2
+  Send
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -50,7 +39,7 @@ const getProjectById = (id: string) => {
   // 먼저 로컬 스토리지에서 사용자가 생성한 프로젝트 확인
   if (typeof window !== 'undefined') {
     const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-    const userProject = userProjects.find((p: any) => p.id === id);
+    const userProject = userProjects.find((p: { id: string }) => p.id === id);
     if (userProject) {
       return userProject;
     }
@@ -1005,7 +994,7 @@ export default function ProjectDetailPage() {
   const isUserProject = () => {
     if (typeof window !== 'undefined') {
       const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-      return userProjects.some((p: any) => p.id === params.id);
+      return userProjects.some((p: { id: string }) => p.id === params.id);
     }
     return false;
   };
@@ -1021,7 +1010,7 @@ export default function ProjectDetailPage() {
     try {
       if (typeof window !== 'undefined') {
         const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-        const updatedProjects = userProjects.filter((p: any) => p.id !== params.id);
+        const updatedProjects = userProjects.filter((p: { id: string }) => p.id !== params.id);
         localStorage.setItem('userProjects', JSON.stringify(updatedProjects));
         
         toast.success("프로젝트가 성공적으로 삭제되었습니다.");
@@ -1151,7 +1140,7 @@ export default function ProjectDetailPage() {
               <p className="text-xl text-gray-300 mb-4">{project.shortDescription}</p>
               
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                {project.tags.map(tag => (
+                {project.tags.map((tag: string) => (
                   <Badge key={tag} variant="outline" className="hover:bg-purple-500/10 hover:border-purple-400/50 transition-colors">
                     {tag}
                   </Badge>
@@ -1327,7 +1316,7 @@ export default function ProjectDetailPage() {
                   <CardContent>
                     <div className="space-y-3">
                       {project.fundingHistory && project.fundingHistory.length > 0 ? (
-                        project.fundingHistory.map((item, index) => (
+                        project.fundingHistory.map((item: { amount: number; date: string; backers: number; txHash: string }, index: number) => (
                           <div key={index} className="flex justify-between items-center p-3 glass rounded-lg">
                             <div>
                               <p className="text-white font-semibold">{item.amount.toLocaleString()} RLUSD</p>

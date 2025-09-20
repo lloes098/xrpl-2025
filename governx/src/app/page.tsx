@@ -11,12 +11,8 @@ import {
   TrendingUp, 
   Users, 
   Shield, 
-  Zap, 
-  Globe, 
   ArrowRight,
-  Star,
-  Target,
-  Heart
+  Target
 } from "lucide-react";
 
 // Mock data for demonstration
@@ -180,7 +176,7 @@ export default function Home() {
             </h2>
             <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
               🌐 Web3 성장의 파도, 지금이 기회<br/>
-              빠르게 커지는 Web3 시장, "Web3의 Wadiz" 자리를 선점하세요.
+              빠르게 커지는 Web3 시장, &quot;Web3의 Wadiz&quot; 자리를 선점하세요.
             </p>
           </div>
 

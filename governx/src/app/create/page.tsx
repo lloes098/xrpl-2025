@@ -12,14 +12,10 @@ import { Stepper } from "@/components/ui/Stepper";
 import { FeeStructureCard } from "@/components/project/FeeStructureCard";
 import { 
   Rocket, 
-  Upload, 
   Target, 
-  Calendar, 
-  DollarSign, 
   FileText, 
   Image,
   Video,
-  Globe,
   Users,
   ArrowRight,
   ArrowLeft,
@@ -96,7 +92,7 @@ export default function CreateProject() {
     timeline: "",
   });
 
-  const updateFormData = (field: keyof ProjectForm, value: any) => {
+  const updateFormData = (field: keyof ProjectForm, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -271,7 +267,7 @@ export default function CreateProject() {
 }
 
 // Step Components
-function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) {
+function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: string | number) => void }) {
   return (
     <Card>
       <CardHeader>
@@ -394,7 +390,7 @@ function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; up
   );
 }
 
-function MediaStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) {
+function MediaStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: string | number) => void }) {
   return (
     <Card>
       <CardHeader>
@@ -465,7 +461,7 @@ function MediaStep({ formData, updateFormData }: { formData: ProjectForm; update
   );
 }
 
-function FundingStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) {
+function FundingStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: string | number) => void }) {
   return (
     <div className="space-y-8">
       <Card>

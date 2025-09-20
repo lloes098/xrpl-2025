@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Clock,
   DollarSign,
-  Users,
   Target
 } from "lucide-react";
 
@@ -190,7 +189,7 @@ export default function ProjectsPage() {
   const handleDeleteProject = (projectId: string) => {
     if (typeof window !== 'undefined') {
       const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-      const updatedProjects = userProjects.filter((p: any) => p.id !== projectId);
+      const updatedProjects = userProjects.filter((p: { id: string }) => p.id !== projectId);
       localStorage.setItem('userProjects', JSON.stringify(updatedProjects));
       
       // 페이지 새로고침으로 목록 업데이트
@@ -202,7 +201,7 @@ export default function ProjectsPage() {
   const isUserProject = (projectId: string) => {
     if (typeof window !== 'undefined') {
       const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
-      return userProjects.some((p: any) => p.id === projectId);
+      return userProjects.some((p: { id: string }) => p.id === projectId);
     }
     return false;
   };
