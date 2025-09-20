@@ -44,6 +44,7 @@ interface ProjectForm {
   // Creator Info
   creatorName: string;
   creatorBio: string;
+  businessPlan: File | null;
   
   // Project Details
   projectGoals: string;
@@ -87,12 +88,13 @@ export default function CreateProject() {
     currency: "RLUSD" as const,
     creatorName: "",
     creatorBio: "",
+    businessPlan: null,
     projectGoals: "",
     risks: "",
     timeline: "",
   });
 
-  const updateFormData = (field: keyof ProjectForm, value: string | number) => {
+  const updateFormData = (field: keyof ProjectForm, value: string | number | File | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -109,6 +111,17 @@ export default function CreateProject() {
   };
 
   const createProject = async () => {
+    // 필수 필드 검증
+    if (!formData.creatorName.trim()) {
+      toast.error('창작자 이름을 입력해주세요.');
+      return;
+    }
+    
+    if (!formData.businessPlan) {
+      toast.error('사업계획서를 업로드해주세요.');
+      return;
+    }
+    
     setIsCreating(true);
     
     try {
@@ -152,7 +165,13 @@ export default function CreateProject() {
           proposals: []
         },
         // 투명성 리포트 초기화
-        transparencyReports: []
+        transparencyReports: [],
+        // 사업계획서 정보
+        businessPlan: {
+          fileName: formData.businessPlan.name,
+          fileSize: formData.businessPlan.size,
+          uploadedAt: new Date().toISOString()
+        }
       };
 
       // 로컬 스토리지에 저장 (실제로는 API 호출)
@@ -324,7 +343,7 @@ function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; up
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-white font-semibold">창작자 이름 *</label>
             <Input
@@ -332,6 +351,57 @@ function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; up
               value={formData.creatorName}
               onChange={(e) => updateFormData('creatorName', e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-white font-semibold">사업계획서 업로드 *</label>
+            <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-purple-500 transition-colors">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              {formData.businessPlan ? (
+                <div className="space-y-2">
+                  <p className="text-white font-medium">{formData.businessPlan.name}</p>
+                  <p className="text-gray-400 text-sm">
+                    {(formData.businessPlan.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateFormData('businessPlan', null)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    파일 제거
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-gray-400">PDF, DOC, DOCX 파일을 업로드하세요</p>
+                  <p className="text-gray-500 text-sm">최대 10MB</p>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && file.size <= 10 * 1024 * 1024) {
+                        updateFormData('businessPlan', file);
+                      } else if (file) {
+                        toast.error('파일 크기는 10MB를 초과할 수 없습니다.');
+                      }
+                    }}
+                    className="hidden"
+                    id="business-plan-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('business-plan-upload')?.click()}
+                    className="mt-2"
+                  >
+                    파일 선택
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="space-y-2">

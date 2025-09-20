@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { ProjectCard } from "@/components/project/ProjectCard";
@@ -61,14 +62,49 @@ const mockProjects = [
   }
 ];
 
-const stats = [
-  { label: "총 펀딩액", value: "2.5M XRP", icon: TrendingUp },
-  { label: "성공 프로젝트", value: "1,234개", icon: Target },
-  { label: "활성 후원자", value: "45,678명", icon: Users },
-  { label: "플랫폼 신뢰도", value: "99.9%", icon: Shield }
-];
-
 export default function Home() {
+  // 초기 통계 계산 (서버 사이드에서도 올바른 값 표시)
+  const calculateStats = () => {
+    const allProjects = [
+      ...mockProjects,
+      ...(typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userProjects') || '[]') : [])
+    ];
+
+    const totalFunding = allProjects.reduce((sum, project) => sum + project.currentAmount, 0);
+    const successfulProjects = allProjects.filter(p => p.status === "successful").length;
+    const totalBackers = allProjects.reduce((sum, project) => sum + project.backers, 0);
+    const activeProjects = allProjects.filter(p => p.status === "active").length;
+
+    return [
+      { 
+        label: "총 펀딩액", 
+        value: `${(totalFunding / 1000000).toFixed(1)}M XRP`, 
+        icon: TrendingUp 
+      },
+      { 
+        label: "성공 프로젝트", 
+        value: `${successfulProjects}개`, 
+        icon: Target 
+      },
+      { 
+        label: "활성 후원자", 
+        value: `${totalBackers.toLocaleString()}명`, 
+        icon: Users 
+      },
+      { 
+        label: "진행 중", 
+        value: `${activeProjects}개`, 
+        icon: Shield 
+      }
+    ];
+  };
+
+  const [stats, setStats] = useState(calculateStats);
+
+  useEffect(() => {
+    // 클라이언트에서 업데이트
+    setStats(calculateStats());
+  }, []);
   return (
     <div className="min-h-screen gradient-dark main-content">
       <Header />
