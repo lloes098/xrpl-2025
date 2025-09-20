@@ -1350,7 +1350,7 @@ export default function ProjectDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {project.governance?.proposals && project.governance.proposals.length > 0 ? (
-                      project.governance.proposals.map((proposal) => (
+                      project.governance.proposals.map((proposal: { id: string; title: string; description: string; status: string; votesFor: number; votesAgainst: number; totalVotes: number }) => (
                       <div key={proposal.id} className="p-4 glass rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <h4 className="text-white font-semibold">{proposal.title}</h4>
@@ -1423,7 +1423,7 @@ export default function ProjectDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {project.transparencyReports && project.transparencyReports.length > 0 ? (
-                      project.transparencyReports.map((report) => (
+                      project.transparencyReports.map((report: { id: string; title: string; description: string; category: string; date: string }) => (
                       <div key={report.id} className="p-6 glass rounded-lg">
                         <h4 className="text-white text-xl font-semibold mb-2">{report.title}</h4>
                         <p className="text-gray-300 text-sm mb-3">{report.description}</p>
@@ -1446,7 +1446,7 @@ export default function ProjectDetailPage() {
               {/* Updates Tab */}
               <TabsContent value="updates" className="space-y-6">
                 {project.updates && project.updates.length > 0 ? (
-                  project.updates.map(update => (
+                  project.updates.map((update: { id: string; title: string; content: string; date: string; image?: string }) => (
                   <Card key={update.id} className="glass hover:bg-white/5 transition-colors">
                     <CardHeader>
                       <div className="flex items-center justify-between">

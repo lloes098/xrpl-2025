@@ -20,7 +20,7 @@ function Copyable({ value, short = 10 }: { value: string; short?: number }) {
   return (
     <div className="flex items-center gap-2">
       <code className="font-mono text-purple-300 break-all">{display}</code>
-      <Button variant="ghost" size="icon" onClick={onCopy} aria-label="copy">
+      <Button variant="ghost" size="sm" onClick={onCopy} aria-label="copy">
         <Copy className="h-4 w-4" />
       </Button>
     </div>
