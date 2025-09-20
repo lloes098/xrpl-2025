@@ -452,3 +452,61 @@ export async function cancelEscrow(
     await escrowManager.disconnect();
   }
 }
+
+export async function getEscrowInfo(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string,
+  owner: string,
+  offerSequence: number
+): Promise<any> {
+  const escrowManager = new TokenEscrowManager(adminSeed, userSeed, user2Seed);
+  
+  try {
+    await escrowManager.connect();
+    return await escrowManager.getEscrowInfo(owner, offerSequence);
+  } finally {
+    await escrowManager.disconnect();
+  }
+}
+
+export async function runIOUEscrowLifecycle(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string,
+  currency: string,
+  issuer: string,
+  value: string,
+  finishAfter: number,
+  cancelAfter: number,
+  autoFinish: boolean = true
+): Promise<void> {
+  const escrowManager = new TokenEscrowManager(adminSeed, userSeed, user2Seed);
+  
+  try {
+    await escrowManager.connect();
+    return await escrowManager.runIOUEscrowLifecycle(currency, issuer, value, finishAfter, cancelAfter, autoFinish);
+  } finally {
+    await escrowManager.disconnect();
+  }
+}
+
+export async function runMPTEscrowLifecycle(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string,
+  issuanceId: string,
+  value: string,
+  finishAfter: number,
+  cancelAfter: number,
+  autoFinish: boolean = true
+): Promise<void> {
+  const escrowManager = new TokenEscrowManager(adminSeed, userSeed, user2Seed);
+  
+  try {
+    await escrowManager.connect();
+    return await escrowManager.runMPTEscrowLifecycle(issuanceId, value, finishAfter, cancelAfter, autoFinish);
+  } finally {
+    await escrowManager.disconnect();
+  }
+}

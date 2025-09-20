@@ -2,7 +2,7 @@ import { Client, Wallet } from "xrpl";
 
 export async function trustset(
   holderSeed: string,
-  issuerAddress: string,
+  issuerAddressOrSeed: string,
   currency: string = "ETF",
   limitValue: string = "1000"
 ) {
@@ -13,10 +13,24 @@ export async function trustset(
   try {
     // 2) 지갑 로드
     const holderWallet = Wallet.fromSeed(holderSeed); // 홀더
-
     const holder = holderWallet.address;
 
-    // 3) 홀더가 발행자의 IOU를 신뢰하도록 TrustSet
+    // 3) issuer가 seed인지 address인지 판단
+    let issuerAddress: string;
+    if (issuerAddressOrSeed.startsWith('s') && issuerAddressOrSeed.length >= 25) {
+      // seed로 판단 (s로 시작하고 25자 이상)
+      const issuerWallet = Wallet.fromSeed(issuerAddressOrSeed);
+      issuerAddress = issuerWallet.address;
+      console.log("Issuer seed detected, address:", issuerAddress);
+    } else if (issuerAddressOrSeed.startsWith('r') && issuerAddressOrSeed.length >= 25) {
+      // address로 판단 (r로 시작하고 25자 이상)
+      issuerAddress = issuerAddressOrSeed;
+      console.log("Issuer address detected:", issuerAddress);
+    } else {
+      throw new Error("Invalid issuer format. Must be either seed (s...) or address (r...)");
+    }
+
+    // 4) 홀더가 발행자의 IOU를 신뢰하도록 TrustSet
     const trustSetTx = {
       TransactionType: "TrustSet",
       Account: holder,
