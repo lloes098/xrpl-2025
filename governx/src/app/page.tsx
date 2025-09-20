@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { ProjectCard } from "@/components/project/ProjectCard";
@@ -61,14 +62,49 @@ const mockProjects = [
   }
 ];
 
-const stats = [
-  { label: "총 펀딩액", value: "2.5M XRP", icon: TrendingUp },
-  { label: "성공 프로젝트", value: "1,234개", icon: Target },
-  { label: "활성 후원자", value: "45,678명", icon: Users },
-  { label: "플랫폼 신뢰도", value: "99.9%", icon: Shield }
-];
-
 export default function Home() {
+  // 초기 통계 계산 (서버 사이드에서도 올바른 값 표시)
+  const calculateStats = () => {
+    const allProjects = [
+      ...mockProjects,
+      ...(typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('userProjects') || '[]') : [])
+    ];
+
+    const totalFunding = allProjects.reduce((sum, project) => sum + project.currentAmount, 0);
+    const successfulProjects = allProjects.filter(p => p.status === "successful").length;
+    const totalBackers = allProjects.reduce((sum, project) => sum + project.backers, 0);
+    const activeProjects = allProjects.filter(p => p.status === "active").length;
+
+    return [
+      { 
+        label: "총 펀딩액", 
+        value: `${(totalFunding / 1000000).toFixed(1)}M XRP`, 
+        icon: TrendingUp 
+      },
+      { 
+        label: "성공 프로젝트", 
+        value: `${successfulProjects}개`, 
+        icon: Target 
+      },
+      { 
+        label: "활성 후원자", 
+        value: `${totalBackers.toLocaleString()}명`, 
+        icon: Users 
+      },
+      { 
+        label: "진행 중", 
+        value: `${activeProjects}개`, 
+        icon: Shield 
+      }
+    ];
+  };
+
+  const [stats, setStats] = useState(calculateStats);
+
+  useEffect(() => {
+    // 클라이언트에서 업데이트
+    setStats(calculateStats());
+  }, []);
   return (
     <div className="min-h-screen gradient-dark main-content">
       <Header />
@@ -90,15 +126,15 @@ export default function Home() {
             </Badge>
             
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight">
-              Web3의 새로운
+              New Web3
               <span className="block bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent neon-text">
-                크라우드펀딩
+                Crowdfunding
               </span>
             </h1>
             
-            <p className="text-xl md:text-3xl mb-12 text-gray-200 max-w-4xl mx-auto leading-relaxed">
-              투명하고 안전한 블록체인 기술로 혁신적인 Web3 프로젝트에 투자하고, 
-              창작자와 투자자가 함께 성장하는 생태계를 만들어가세요.
+            <p className="text-lg md:text-2xl mb-12 text-gray-200 max-w-4xl mx-auto leading-relaxed">
+              Invest in innovative Web3 projects with transparent and secure blockchain technology, 
+              and create an ecosystem where creators and investors grow together.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center">

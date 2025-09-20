@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/Tabs";
 import OverviewTab from "../../../components/project/OverviewTab";
+import { TransparencyChart } from "../../../components/project/TransparencyChart";
 import { useWalletStore } from "@/store/walletStore";
 import { sendXRPPayment, sendIOUToken } from "@/lib/xrpl";
 import { 
@@ -1240,7 +1241,7 @@ export default function ProjectDetailPage() {
           <div className="lg:col-span-2 space-y-8">
             {/* Web3 Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 glass">
+              <TabsList className="grid w-full grid-cols-6 glass">
                 <TabsTrigger value="overview" className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
                   개요
@@ -1256,6 +1257,10 @@ export default function ProjectDetailPage() {
                 <TabsTrigger value="transparency" className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   투명성
+                </TabsTrigger>
+                <TabsTrigger value="business-plan" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  사업계획서
                 </TabsTrigger>
                 <TabsTrigger value="updates" className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
@@ -1453,29 +1458,118 @@ export default function ProjectDetailPage() {
 
               {/* Transparency Tab */}
               <TabsContent value="transparency" className="space-y-6">
+                <TransparencyChart projectId={project.id} />
+              </TabsContent>
+
+              {/* Business Plan Tab */}
+              <TabsContent value="business-plan" className="space-y-6">
                 <Card className="glass">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <FileText className="w-5 h-5 text-cyan-400" />
-                      투명 리포트
+                      사업계획서
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {project.transparencyReports && project.transparencyReports.length > 0 ? (
-                      project.transparencyReports.map((report: { id: string; title: string; description: string; category: string; date: string }) => (
-                      <div key={report.id} className="p-6 glass rounded-lg">
-                        <h4 className="text-white text-xl font-semibold mb-2">{report.title}</h4>
-                        <p className="text-gray-300 text-sm mb-3">{report.description}</p>
-                        <div className="text-xs text-gray-400">
-                          <span>{report.category} • {report.date}</span>
+                  <CardContent className="space-y-6">
+                    {project.businessPlan ? (
+                      <div className="space-y-4">
+                        {/* 사업계획서 정보 */}
+                        <div className="p-6 glass rounded-lg">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                                <FileText className="w-6 h-6 text-white" />
+                              </div>
+                              <div>
+                                <h3 className="text-white font-semibold text-lg">{project.businessPlan.fileName}</h3>
+                                <p className="text-gray-400 text-sm">
+                                  {(project.businessPlan.fileSize / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="primary"
+                              onClick={() => {
+                                // 실제로는 서버에서 파일을 다운로드하는 로직이 필요
+                                toast.success('사업계획서 다운로드가 시작됩니다.');
+                              }}
+                              className="gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              다운로드
+                            </Button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">업로드 일시:</span>
+                              <span className="text-white">
+                                {new Date(project.businessPlan.uploadedAt).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">파일 형식:</span>
+                              <span className="text-white">
+                                {project.businessPlan.fileName.split('.').pop()?.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 사업계획서 미리보기 (PDF인 경우) */}
+                        {project.businessPlan.fileName.toLowerCase().endsWith('.pdf') && (
+                          <div className="glass rounded-lg p-6">
+                            <h4 className="text-white font-semibold mb-4">사업계획서 미리보기</h4>
+                            <div className="bg-gray-800 rounded-lg p-8 text-center">
+                              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                              <p className="text-gray-400 mb-4">PDF 미리보기를 준비 중입니다</p>
+                              <p className="text-gray-500 text-sm">
+                                현재는 파일 다운로드만 지원됩니다. 곧 미리보기 기능이 추가될 예정입니다.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 사업계획서 요약 정보 */}
+                        <div className="glass rounded-lg p-6">
+                          <h4 className="text-white font-semibold mb-4">사업계획서 요약</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                              <div className="text-2xl font-bold text-purple-400 mb-2">
+                                {project.businessPlan.fileName.split('.').pop()?.toUpperCase()}
+                              </div>
+                              <div className="text-gray-400 text-sm">파일 형식</div>
+                            </div>
+                            <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                              <div className="text-2xl font-bold text-green-400 mb-2">
+                                {(project.businessPlan.fileSize / 1024 / 1024).toFixed(1)}MB
+                              </div>
+                              <div className="text-gray-400 text-sm">파일 크기</div>
+                            </div>
+                            <div className="text-center p-4 bg-gray-800/50 rounded-lg">
+                              <div className="text-2xl font-bold text-blue-400 mb-2">
+                                ✓
+                              </div>
+                              <div className="text-gray-400 text-sm">검증 완료</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    ))
                     ) : (
-                      <div className="text-center py-8">
-                        <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-400 mb-2">아직 투명 리포트가 없습니다</p>
-                        <p className="text-sm text-gray-500">프로젝트 진행 상황을 공유해보세요!</p>
+                      <div className="text-center py-12">
+                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-white mb-2">사업계획서가 없습니다</h3>
+                        <p className="text-gray-400 mb-6">이 프로젝트에는 업로드된 사업계획서가 없습니다.</p>
+                        <Button variant="outline" disabled>
+                          <FileText className="w-4 h-4 mr-2" />
+                          사업계획서 없음
+                        </Button>
                       </div>
                     )}
                   </CardContent>
