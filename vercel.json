@@ -1,7 +1,0 @@
-{
-  "buildCommand": "cd governx && npm run build",
-  "outputDirectory": "governx/.next",
-  "installCommand": "cd governx && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "governx"
-}
