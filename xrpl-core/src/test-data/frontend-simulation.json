@@ -1,0 +1,354 @@
+{
+  "testScenarios": {
+    "projectCreation": {
+      "scenario1": {
+        "description": "AI 스타트업 프로젝트 생성",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/projects",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-token-123"
+          },
+          "body": {
+            "name": "AI Healthcare Assistant",
+            "description": "의료진을 위한 AI 기반 진단 보조 시스템 개발",
+            "targetAmount": 1000000,
+            "deadline": "2024-12-31T23:59:59Z",
+            "creatorWallet": "rN7n7otQDd6FczFgZdPqMkykCRzGn5xPwX",
+            "website": "https://aihealthcare.example.com",
+            "logo": "https://aihealthcare.example.com/logo.png",
+            "category": "healthcare",
+            "tags": ["AI", "Healthcare", "Machine Learning", "Medical"],
+            "socialLinks": {
+              "twitter": "https://twitter.com/aihealthcare",
+              "linkedin": "https://linkedin.com/company/aihealthcare",
+              "github": "https://github.com/aihealthcare"
+            },
+            "tokenomics": {
+              "totalTokens": 10000000,
+              "tokenPrice": 0.1,
+              "platformTokenShare": 0.1,
+              "creatorTokenShare": 0.2,
+              "investorTokenShare": 0.7
+            },
+            "milestones": [
+              {
+                "name": "MVP 개발 완료",
+                "description": "기본 AI 모델 및 웹 인터페이스 개발",
+                "targetAmount": 300000,
+                "deadline": "2024-06-30T23:59:59Z",
+                "evidence": "GitHub repository, 데모 영상"
+              },
+              {
+                "name": "베타 테스트 시작",
+                "description": "3개 병원에서 베타 테스트 진행",
+                "targetAmount": 500000,
+                "deadline": "2024-09-30T23:59:59Z",
+                "evidence": "병원 계약서, 테스트 결과 보고서"
+              },
+              {
+                "name": "상용 서비스 런칭",
+                "description": "전국 10개 병원에 서비스 배포",
+                "targetAmount": 1000000,
+                "deadline": "2024-12-31T23:59:59Z",
+                "evidence": "서비스 계약서, 수익 보고서"
+              }
+            ]
+          }
+        },
+        "expectedResponse": {
+          "success": true,
+          "projectId": "proj_ai_healthcare_001",
+          "mptIssuanceId": "mpt_ai_healthcare_001",
+          "issuerWallet": "rIssuer123456789",
+          "txHash": "tx_hash_creation_001"
+        }
+      },
+      "scenario2": {
+        "description": "DeFi 프로토콜 프로젝트 생성",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/projects",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-token-456"
+          },
+          "body": {
+            "name": "Cross-Chain Bridge Protocol",
+            "description": "다양한 블록체인 간 자산 이동을 위한 브릿지 프로토콜",
+            "targetAmount": 2000000,
+            "deadline": "2025-03-31T23:59:59Z",
+            "creatorWallet": "rDeFi123456789",
+            "website": "https://crossbridge.example.com",
+            "logo": "https://crossbridge.example.com/logo.png",
+            "category": "defi",
+            "tags": ["DeFi", "Cross-Chain", "Bridge", "Ethereum", "Polygon"],
+            "socialLinks": {
+              "twitter": "https://twitter.com/crossbridge",
+              "discord": "https://discord.gg/crossbridge",
+              "github": "https://github.com/crossbridge"
+            },
+            "tokenomics": {
+              "totalTokens": 50000000,
+              "tokenPrice": 0.04,
+              "platformTokenShare": 0.15,
+              "creatorTokenShare": 0.25,
+              "investorTokenShare": 0.6
+            },
+            "milestones": [
+              {
+                "name": "Ethereum-Polygon 브릿지 완성",
+                "description": "ETH와 MATIC 간 양방향 브릿지 구현",
+                "targetAmount": 800000,
+                "deadline": "2024-08-31T23:59:59Z",
+                "evidence": "스마트 컨트랙트 배포, 테스트넷 검증"
+              },
+              {
+                "name": "다중 체인 지원",
+                "description": "BSC, Avalanche, Arbitrum 지원 추가",
+                "targetAmount": 1400000,
+                "deadline": "2024-12-31T23:59:59Z",
+                "evidence": "각 체인별 컨트랙트 배포, 통합 테스트"
+              },
+              {
+                "name": "메인넷 런칭",
+                "description": "보안 감사 완료 후 메인넷 서비스 시작",
+                "targetAmount": 2000000,
+                "deadline": "2025-03-31T23:59:59Z",
+                "evidence": "보안 감사 보고서, 메인넷 배포 증명"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "investment": {
+      "scenario1": {
+        "description": "AI Healthcare 프로젝트에 투자",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/investments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer investor-token-001"
+          },
+          "body": {
+            "projectId": "proj_ai_healthcare_001",
+            "investorWallet": "rInvestor123456789",
+            "amount": 50000,
+            "currency": "RLUSD",
+            "investmentType": "equity",
+            "expectedTokens": 500000,
+            "notes": "AI 헬스케어 분야에 대한 관심으로 투자 결정"
+          }
+        },
+        "expectedResponse": {
+          "success": true,
+          "investmentId": "inv_ai_healthcare_001",
+          "batchTxHash": "batch_tx_hash_001",
+          "tokensReceived": 500000,
+          "platformFee": 2500,
+          "escrowId": "escrow_ai_healthcare_001"
+        }
+      },
+      "scenario2": {
+        "description": "DeFi 프로젝트에 대규모 투자",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/investments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer investor-token-002"
+          },
+          "body": {
+            "projectId": "proj_defi_bridge_002",
+            "investorWallet": "rBigInvestor987654321",
+            "amount": 200000,
+            "currency": "RLUSD",
+            "investmentType": "equity",
+            "expectedTokens": 5000000,
+            "notes": "DeFi 생태계 성장에 기여하고자 하는 투자"
+          }
+        }
+      }
+    },
+    "milestoneAchievement": {
+      "scenario1": {
+        "description": "AI Healthcare MVP 개발 완료",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/milestones/achieve",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer creator-token-001"
+          },
+          "body": {
+            "projectId": "proj_ai_healthcare_001",
+            "milestoneId": "milestone_mvp_001",
+            "evidence": {
+              "type": "github_repository",
+              "url": "https://github.com/aihealthcare/mvp",
+              "commitHash": "abc123def456",
+              "description": "MVP 개발 완료 - 기본 AI 모델 및 웹 인터페이스 구현"
+            },
+            "verificationData": {
+              "codeQuality": "A+",
+              "testCoverage": "85%",
+              "documentation": "완료",
+              "demoUrl": "https://demo.aihealthcare.example.com"
+            }
+          }
+        },
+        "expectedResponse": {
+          "success": true,
+          "milestoneId": "milestone_mvp_001",
+          "status": "COMPLETED",
+          "escrowReleaseAmount": 300000,
+          "txHash": "milestone_release_tx_001"
+        }
+      }
+    },
+    "revenueDistribution": {
+      "scenario1": {
+        "description": "AI Healthcare 프로젝트 수익 분배",
+        "request": {
+          "method": "POST",
+          "endpoint": "/api/distributions",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer creator-token-001"
+          },
+          "body": {
+            "projectId": "proj_ai_healthcare_001",
+            "totalRevenue": 500000,
+            "distributionType": "quarterly",
+            "period": "2024-Q4",
+            "revenueBreakdown": {
+              "subscription": 300000,
+              "consulting": 150000,
+              "licensing": 50000
+            }
+          }
+        },
+        "expectedResponse": {
+          "success": true,
+          "distributionId": "dist_ai_healthcare_2024Q4",
+          "totalDistributed": 500000,
+          "platformShare": 25000,
+          "creatorShare": 75000,
+          "investorShare": 400000,
+          "batchTxHash": "distribution_batch_tx_001"
+        }
+      }
+    }
+  },
+  "testWallets": {
+    "platform": {
+      "address": "rPlatform123456789",
+      "seed": "sPlatformSeed123456789",
+      "balance": "1000000"
+    },
+    "creators": [
+      {
+        "address": "rCreator123456789",
+        "seed": "sCreatorSeed123456789",
+        "balance": "100000",
+        "name": "AI Healthcare Creator"
+      },
+      {
+        "address": "rDeFi123456789",
+        "seed": "sDeFiSeed123456789",
+        "balance": "150000",
+        "name": "DeFi Bridge Creator"
+      }
+    ],
+    "investors": [
+      {
+        "address": "rInvestor123456789",
+        "seed": "sInvestorSeed123456789",
+        "balance": "500000",
+        "name": "Individual Investor A"
+      },
+      {
+        "address": "rBigInvestor987654321",
+        "seed": "sBigInvestorSeed987654321",
+        "balance": "2000000",
+        "name": "Institutional Investor B"
+      },
+      {
+        "address": "rVenture123456789",
+        "seed": "sVentureSeed123456789",
+        "balance": "1000000",
+        "name": "Venture Capital C"
+      }
+    ]
+  },
+  "testProjects": {
+    "active": [
+      {
+        "id": "proj_ai_healthcare_001",
+        "name": "AI Healthcare Assistant",
+        "status": "ACTIVE",
+        "currentAmount": 750000,
+        "targetAmount": 1000000,
+        "progress": 75,
+        "investorCount": 15,
+        "mptIssuanceId": "mpt_ai_healthcare_001"
+      },
+      {
+        "id": "proj_defi_bridge_002",
+        "name": "Cross-Chain Bridge Protocol",
+        "status": "ACTIVE",
+        "currentAmount": 1200000,
+        "targetAmount": 2000000,
+        "progress": 60,
+        "investorCount": 8,
+        "mptIssuanceId": "mpt_defi_bridge_002"
+      }
+    ],
+    "completed": [
+      {
+        "id": "proj_nft_marketplace_003",
+        "name": "NFT Marketplace Platform",
+        "status": "COMPLETED",
+        "finalAmount": 800000,
+        "targetAmount": 800000,
+        "progress": 100,
+        "investorCount": 25,
+        "mptIssuanceId": "mpt_nft_marketplace_003"
+      }
+    ]
+  },
+  "testTransactions": {
+    "recent": [
+      {
+        "id": "tx_001",
+        "type": "PROJECT_CREATION",
+        "projectId": "proj_ai_healthcare_001",
+        "amount": 0,
+        "timestamp": "2024-01-15T10:30:00Z",
+        "status": "CONFIRMED",
+        "hash": "tx_hash_creation_001"
+      },
+      {
+        "id": "tx_002",
+        "type": "INVESTMENT",
+        "projectId": "proj_ai_healthcare_001",
+        "amount": 50000,
+        "timestamp": "2024-01-16T14:20:00Z",
+        "status": "CONFIRMED",
+        "hash": "batch_tx_hash_001"
+      },
+      {
+        "id": "tx_003",
+        "type": "MILESTONE_ACHIEVEMENT",
+        "projectId": "proj_ai_healthcare_001",
+        "amount": 300000,
+        "timestamp": "2024-01-20T09:15:00Z",
+        "status": "CONFIRMED",
+        "hash": "milestone_release_tx_001"
+      }
+    ]
+  }
+}
