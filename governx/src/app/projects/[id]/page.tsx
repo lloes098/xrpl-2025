@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+
+export const dynamic = "force-dynamic";
 import { useParams, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
@@ -1027,17 +1030,7 @@ export default function ProjectDetailPage() {
   };
 
   if (!project) {
-    return (
-      <div className="min-h-screen gradient-dark main-content flex items-center justify-center">
-        <Header />
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">프로젝트를 찾을 수 없습니다</h1>
-          <Link href="/projects">
-            <Button variant="primary">프로젝트 목록으로 돌아가기</Button>
-          </Link>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   const progressPercentage = (project.currentAmount / project.targetAmount) * 100;
