@@ -35,7 +35,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">대시보드</h1>
+            <h1 className="text-3xl font-bold text-white">대시보드</h1>
             <p className="text-gray-400 mt-1">XRPL ETF 플랫폼 현황을 한눈에 확인하세요</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -70,7 +70,7 @@ export default function DashboardPage() {
                   <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : allocationData ? (
-                <AllocationPieChart data={allocationData} />
+                <AllocationPieChart currentData={allocationData} />
               ) : (
                 <div className="h-80 flex items-center justify-center text-gray-400">
                   데이터를 불러올 수 없습니다

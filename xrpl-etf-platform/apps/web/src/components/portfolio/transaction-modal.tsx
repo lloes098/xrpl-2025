@@ -10,7 +10,7 @@ interface TransactionModalProps {
   type: "deposit" | "withdraw";
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (amount: number) => void;
+  onSubmit: (amount: number, asset?: string) => void;
   maxAmount?: number;
   currentPrice?: number;
 }
@@ -24,6 +24,7 @@ export default function TransactionModal({
   currentPrice = 20.15
 }: TransactionModalProps) {
   const [amount, setAmount] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState("RLUSD"); // 기본값 RLUSD
   const [isLoading, setIsLoading] = useState(false);
 
   const isDeposit = type === "deposit";
@@ -39,8 +40,9 @@ export default function TransactionModal({
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000)); // 트랜잭션 시뮬레이션
-      onSubmit(parsedAmount);
+      onSubmit(parsedAmount, selectedAsset);
       setAmount("");
+      setSelectedAsset("RLUSD"); // 리셋
       onClose();
     } finally {
       setIsLoading(false);
@@ -68,7 +70,7 @@ export default function TransactionModal({
               ) : (
                 <ArrowUpRight className="w-5 h-5 text-red-400" />
               )}
-              <span>{isDeposit ? "XRP 입금" : "ETFX 환매"}</span>
+              <span>{isDeposit ? "자산 입금" : "ETFX 환매"}</span>
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="w-4 h-4" />
@@ -77,10 +79,52 @@ export default function TransactionModal({
 
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Asset Selection (Only for Deposit) */}
+              {isDeposit && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    입금할 자산 선택
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAsset("RLUSD")}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedAsset === "RLUSD"
+                          ? "border-cyan-500 bg-cyan-500/10"
+                          : "border-gray-700 bg-dark-800/30 hover:border-gray-600"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-white">RLUSD</div>
+                        <div className="text-xs text-gray-400 mt-1">Stablecoin (권장)</div>
+                        <div className="text-xs text-green-400 mt-1">안정성 ↑</div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAsset("XRP")}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedAsset === "XRP"
+                          ? "border-cyan-500 bg-cyan-500/10"
+                          : "border-gray-700 bg-dark-800/30 hover:border-gray-600"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-white">XRP</div>
+                        <div className="text-xs text-gray-400 mt-1">Native Token</div>
+                        <div className="text-xs text-yellow-400 mt-1">변동성 주의</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Amount Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isDeposit ? "입금할 XRP 수량" : "환매할 ETFX 수량"}
+                  {isDeposit ? `입금할 ${selectedAsset} 수량` : "환매할 ETFX 수량"}
                 </label>
                 <div className="relative">
                   <input
@@ -94,7 +138,7 @@ export default function TransactionModal({
                     className="w-full bg-dark-800/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                    {isDeposit ? "XRP" : "ETFX"}
+                    {isDeposit ? selectedAsset : "ETFX"}
                   </div>
                 </div>
                 {!isDeposit && (
@@ -119,7 +163,7 @@ export default function TransactionModal({
                       onClick={() => setAmount(preset.toString())}
                       className="text-xs"
                     >
-                      {isDeposit ? formatCurrency(preset) : 
+                      {isDeposit ? formatCurrency(preset, selectedAsset) : 
                        index === 3 ? "전액" : `${((index + 1) * 25)}%`}
                     </Button>
                   ))}
@@ -144,8 +188,8 @@ export default function TransactionModal({
                       {isDeposit ? (
                         <>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">입금 XRP</span>
-                            <span className="text-white">{formatCurrency(parsedAmount)}</span>
+                            <span className="text-gray-400">입금 {selectedAsset}</span>
+                            <span className="text-white">{formatCurrency(parsedAmount, selectedAsset)}</span>
                           </div>
                           <div className="flex justify-between border-t border-gray-700/50 pt-2">
                             <span className="text-cyan-400 font-medium">받을 ETFX</span>
@@ -184,7 +228,7 @@ export default function TransactionModal({
                 {isLoading 
                   ? "처리 중..." 
                   : isDeposit 
-                    ? "XRP 입금하기" 
+                    ? `${selectedAsset} 입금하기` 
                     : "ETFX 환매하기"
                 }
               </Button>
@@ -192,7 +236,7 @@ export default function TransactionModal({
               {/* Warning */}
               <div className="text-xs text-gray-400 text-center">
                 {isDeposit 
-                  ? "입금된 XRP는 ETFX 토큰으로 교환되며, 실시간 가격이 적용됩니다."
+                  ? `입금된 ${selectedAsset}는 ETFX 토큰으로 교환되며, 실시간 가격이 적용됩니다.`
                   : "환매된 ETFX는 XRP로 교환되며, 처리까지 시간이 소요될 수 있습니다."
                 }
               </div>

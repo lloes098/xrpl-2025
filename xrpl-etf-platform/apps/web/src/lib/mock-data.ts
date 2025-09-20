@@ -20,7 +20,7 @@ export const mockProposals: Proposal[] = [
       { asset: "BTC", weightPct: 45 },
       { asset: "ETH", weightPct: 25 },
       { asset: "XRP", weightPct: 20 },
-      { asset: "SOL", weightPct: 10 },
+      { asset: "RLUSD", weightPct: 10 },
     ],
     endsAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     rationale: "최근 BTC의 기관 채택 증가와 ETF 승인으로 인한 상승 동력이 지속될 것으로 예상됩니다. 현재 30%에서 45%로 증가하여 포트폴리오의 안정성을 높이고자 합니다.",

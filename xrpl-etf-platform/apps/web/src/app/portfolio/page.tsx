@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import TransactionModal from "@/components/portfolio/transaction-modal";
 import TransactionHistory from "@/components/portfolio/transaction-history";
+import RebalancingModal from "@/components/portfolio/rebalancing-modal";
 import AllocationPieChart from "@/components/charts/allocation-pie-chart";
 import PerformanceLineChart from "@/components/charts/performance-line-chart";
 import { 
@@ -12,7 +13,8 @@ import {
   useUserPortfolio, 
   useTransactions,
   usePerformanceChart,
-  useAllocationChart
+  useAllocationChart,
+  useProposals
 } from "@/lib/queries";
 import { useWalletStore } from "@/stores/wallet-store";
 import { useAppStore } from "@/stores/app-store";
@@ -35,6 +37,8 @@ export default function PortfolioPage() {
     type: "deposit" | "withdraw";
   }>({ isOpen: false, type: "deposit" });
   
+  const [rebalancingModal, setRebalancingModal] = useState(false);
+  
   const [performancePeriod, setPerformancePeriod] = useState<"1d" | "7d" | "30d">("7d");
 
   const { data: portfolioState, isLoading: portfolioLoading } = usePortfolioState();
@@ -42,15 +46,26 @@ export default function PortfolioPage() {
   const { data: transactions, isLoading: transactionsLoading } = useTransactions();
   const { data: performanceData, isLoading: performanceLoading } = usePerformanceChart(performancePeriod);
   const { data: allocationData, isLoading: allocationLoading } = useAllocationChart();
+  const { data: proposals } = useProposals();
+
+  // Get the most recent active proposal for comparison
+  const activeProposal = proposals?.find(p => p.status === "active");
   
   const { isConnected, balance } = useWalletStore();
   const { addToast } = useAppStore();
 
-  const handleTransaction = (amount: number) => {
+  const handleTransaction = (amount: number, asset: string = "XRP") => {
     const isDeposit = transactionModal.type === "deposit";
     
     addToast({
-      message: `${formatCurrency(amount, isDeposit ? "XRP" : "ETFX")} ${isDeposit ? "입금" : "환매"}이 완료되었습니다`,
+      message: `${formatCurrency(amount, isDeposit ? asset : "ETFX")} ${isDeposit ? "입금" : "환매"}이 완료되었습니다`,
+      type: "success",
+    });
+  };
+
+  const handleRebalancingComplete = () => {
+    addToast({
+      message: "리밸런싱이 성공적으로 완료되었습니다!",
       type: "success",
     });
   };
@@ -79,7 +94,7 @@ export default function PortfolioPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">포트폴리오</h1>
+            <h1 className="text-3xl font-bold text-white">포트폴리오</h1>
             <p className="text-gray-400 mt-1">내 투자 현황과 자산을 관리하세요</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -207,8 +222,8 @@ export default function PortfolioPage() {
               >
                 <ArrowDownLeft className="w-6 h-6" />
                 <div className="text-left">
-                  <div className="font-semibold">XRP 입금</div>
-                  <div className="text-xs opacity-80">ETFX 토큰으로 교환</div>
+                  <div className="font-semibold">자산 입금</div>
+                  <div className="text-xs opacity-80">RLUSD/XRP → ETFX</div>
                 </div>
               </Button>
 
@@ -233,9 +248,16 @@ export default function PortfolioPage() {
           {/* Portfolio Allocation */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <PieChart className="w-5 h-5 text-cyan-400" />
-                <span>자산 구성</span>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <PieChart className="w-5 h-5 text-cyan-400" />
+                  <span>자산 구성</span>
+                </div>
+                {activeProposal && (
+                  <div className="text-xs text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-full">
+                    제안 비교 가능
+                  </div>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -244,10 +266,68 @@ export default function PortfolioPage() {
                   <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : allocationData ? (
-                <AllocationPieChart data={allocationData} />
+                <>
+                  {/* Debug Info */}
+                  <div className="mb-4 p-2 bg-gray-800/30 rounded text-xs text-gray-400">
+                    디버그: 활성 제안 {activeProposal ? '있음' : '없음'} | 
+                    제안 수: {proposals?.length || 0} | 
+                    연결됨: {isConnected ? '예' : '아니오'} |
+                    RLUSD 기본 설정됨
+                  </div>
+                  
+                  <AllocationPieChart 
+                    currentData={allocationData}
+                    proposedChanges={activeProposal?.changes}
+                    totalValue={portfolioState?.totalValueXRP}
+                    showComparison={!!activeProposal}
+                  />
+                </>
               ) : (
                 <div className="h-80 flex items-center justify-center text-gray-400">
                   데이터를 불러올 수 없습니다
+                </div>
+              )}
+              
+              {/* Active Proposal Info & Rebalancing */}
+              {activeProposal && (
+                <div className="mt-4 space-y-3">
+                  <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-cyan-400">활성 제안</h4>
+                        <p className="text-sm text-gray-300 mt-1">{activeProposal.title}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => window.location.href = `/vote/${activeProposal.id}`}
+                        className="text-cyan-400 hover:text-cyan-300"
+                      >
+                        투표하러 가기 →
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Rebalancing Action */}
+                  <div className="p-4 bg-green-500/5 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-green-400">리밸런싱 실행</h4>
+                        <p className="text-sm text-gray-300 mt-1">
+                          제안된 비중으로 포트폴리오를 재조정합니다
+                        </p>
+                      </div>
+                      <Button 
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setRebalancingModal(true)}
+                        disabled={!isConnected}
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                      >
+                        수동 실행
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -348,6 +428,17 @@ export default function PortfolioPage() {
         onSubmit={handleTransaction}
         maxAmount={userPortfolio?.etfxBalance || 0}
       />
+
+      {/* Rebalancing Modal */}
+      {activeProposal && portfolioState && (
+        <RebalancingModal
+          isOpen={rebalancingModal}
+          onClose={() => setRebalancingModal(false)}
+          currentAllocations={portfolioState.allocations}
+          targetAllocations={activeProposal.changes}
+          onComplete={handleRebalancingComplete}
+        />
+      )}
     </div>
   );
 }

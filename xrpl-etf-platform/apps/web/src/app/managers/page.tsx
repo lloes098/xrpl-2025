@@ -85,7 +85,7 @@ export default function ManagersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">매니저 보드</h1>
+            <h1 className="text-3xl font-bold text-white">매니저 보드</h1>
             <p className="text-gray-400 mt-1">ETF 매니저들의 성과와 신뢰도를 확인하세요</p>
           </div>
           <div className="text-right">
