@@ -23,12 +23,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@xrpl-etf/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@xrpl-etf/xrpl-sdk':
-        specifier: workspace:*
-        version: link:../../packages/xrpl-sdk
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -63,12 +57,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.89.0
         version: 5.89.0(react@18.3.1)
-      '@xrpl-etf/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@xrpl-etf/xrpl-sdk':
-        specifier: workspace:*
-        version: link:../../packages/xrpl-sdk
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -133,9 +121,6 @@ importers:
 
   packages/xrpl-sdk:
     dependencies:
-      '@xrpl-etf/types':
-        specifier: workspace:*
-        version: link:../types
       xrpl:
         specifier: ^2.7.0
         version: 2.14.3

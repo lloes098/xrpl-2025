@@ -13,9 +13,7 @@
     "express": "^4.18.0",
     "cors": "^2.8.5",
     "helmet": "^7.0.0",
-    "dotenv": "^16.0.0",
-    "@xrpl-etf/types": "workspace:*",
-    "@xrpl-etf/xrpl-sdk": "workspace:*"
+    "dotenv": "^16.0.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
