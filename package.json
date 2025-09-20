@@ -1,0 +1,10 @@
+{
+  "name": "xrpl-2025",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd governx && npm run build",
+    "dev": "cd governx && npm run dev",
+    "start": "cd governx && npm run start"
+  }
+}
