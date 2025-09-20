@@ -28,8 +28,8 @@ export async function setupTrustline(
 ): Promise<TrustlineResult> {
   // Network configuration
   const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
-    : "wss://xrplcluster.com";
+    ? "wss://s.altnet.rippletest.net:51233"  // 올바른 testnet URL
+    : "wss://xrplcluster.com";               // mainnet URL
     
   const client = new Client(networkUrl);
   
@@ -123,8 +123,8 @@ export async function checkTrustline(
   network: 'testnet' | 'mainnet' = 'testnet'
 ): Promise<{ exists: boolean; error?: string }> {
   const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
-    : "wss://xrplcluster.com";
+    ? "wss://s.altnet.rippletest.net:51233"  // 올바른 testnet URL
+    : "wss://xrplcluster.com";               // mainnet URL
     
   const client = new Client(networkUrl);
   

@@ -32,8 +32,8 @@ export class EscrowManager {
   constructor(network: 'testnet' | 'mainnet' = 'testnet') {
     this.network = network;
     const networkUrl = network === 'testnet' 
-      ? "wss://s.devnet.rippletest.net:51233"
-      : "wss://xrplcluster.com";
+      ? "wss://s.altnet.rippletest.net:51233"  // 올바른 testnet URL
+      : "wss://xrplcluster.com";               // mainnet URL
     this.client = new Client(networkUrl);
   }
 

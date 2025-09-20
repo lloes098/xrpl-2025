@@ -28,8 +28,8 @@ export async function sendXRPPayment(
 ): Promise<PaymentResult> {
   // Network configuration
   const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
-    : "wss://xrplcluster.com";
+    ? "wss://s.altnet.rippletest.net:51233"  // 올바른 testnet URL
+    : "wss://xrplcluster.com";               // mainnet URL
     
   const client = new Client(networkUrl);
   
@@ -66,12 +66,27 @@ export async function sendXRPPayment(
         return parseFloat(accountInfo.result.account_data.Balance) / 1_000_000;
       } catch (error) {
         console.error(`Error getting balance for ${classicAddress}:`, error);
+        
+        // Account not found 에러인 경우 명확한 메시지 반환
+        if (error instanceof Error && error.message.includes('Account not found')) {
+          throw new Error(`Account not found on XRPL network. Please create a new wallet or use a valid address.`);
+        }
+        
         return 0;
       }
     };
 
     // Check sender balance before payment
-    const senderBalance = await getBalanceXRP(senderWallet.classicAddress);
+    let senderBalance: number;
+    try {
+      senderBalance = await getBalanceXRP(senderWallet.classicAddress);
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check balance'
+      };
+    }
+    
     if (senderBalance < amountXRP) {
       return {
         success: false,
@@ -152,13 +167,21 @@ export async function getAccountBalance(
   network: 'testnet' | 'mainnet' = 'testnet'
 ): Promise<{ balance: number; error?: string }> {
   const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
-    : "wss://xrplcluster.com";
+    ? "wss://s.altnet.rippletest.net:51233"  // 올바른 testnet URL
+    : "wss://xrplcluster.com";               // mainnet URL
     
   const client = new Client(networkUrl);
   
   try {
     await client.connect();
+
+    // 주소 유효성 검사
+    if (!address || !address.startsWith('r') || address.length < 25) {
+      return { 
+        balance: 0, 
+        error: 'Invalid XRPL address format' 
+      };
+    }
 
     const accountInfo = await client.request({
       command: "account_info",
@@ -170,7 +193,24 @@ export async function getAccountBalance(
     
     return { balance };
   } catch (error) {
-    console.error('Balance check error:', error);
+    console.error('Balance check error for address:', address, error);
+    
+    // Account not found 에러 처리
+    if (error instanceof Error && error.message.includes('Account not found')) {
+      return { 
+        balance: 0, 
+        error: 'Account not found on XRPL network. Please check if the address is correct or create a new wallet.' 
+      };
+    }
+    
+    // Account malformed 에러 처리
+    if (error instanceof Error && error.message.includes('Account malformed')) {
+      return { 
+        balance: 0, 
+        error: 'Invalid XRPL address format. Please check the address.' 
+      };
+    }
+    
     return { 
       balance: 0, 
       error: error instanceof Error ? error.message : 'Failed to get balance' 

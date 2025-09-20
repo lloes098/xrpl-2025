@@ -79,7 +79,18 @@ export const useWalletStore = create<WalletState>()(
         try {
           const walletResult = createWalletFromSeed(seed, network);
           if (walletResult.success && walletResult.wallet) {
+            console.log('Wallet created successfully:', walletResult.wallet.address);
             const balanceResult = await getAccountBalance(walletResult.wallet.address, network);
+            console.log('Balance result:', balanceResult);
+            
+            // 잔액 조회 실패 시에도 지갑은 연결하되, 에러 메시지 표시
+            if (balanceResult.error) {
+              console.warn('Balance check failed, but wallet connected:', balanceResult.error);
+              // Account not found인 경우 사용자에게 알림
+              if (balanceResult.error.includes('Account not found')) {
+                console.warn('This wallet address does not exist on XRPL network. Please create a new wallet or use a valid address.');
+              }
+            }
             
             set({
               isConnected: true,
@@ -144,12 +155,18 @@ export const useWalletStore = create<WalletState>()(
 
       updateBalance: async () => {
         const { address, isConnected, network } = get();
-        if (!isConnected || !address) return;
+        if (!isConnected || !address) {
+          console.log('Cannot update balance: not connected or no address');
+          return;
+        }
 
         try {
           if (get().walletType === 'xrpl') {
             // Real XRPL balance update
+            console.log('Updating balance for address:', address);
             const balanceResult = await getAccountBalance(address, network);
+            console.log('Balance update result:', balanceResult);
+            
             set({ 
               balance: { 
                 xrp: balanceResult.balance, 

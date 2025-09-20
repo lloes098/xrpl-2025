@@ -27,7 +27,7 @@ export async function createXRPLWallet(
 ): Promise<CreateWalletResult> {
   // Network configuration
   const networkUrl = network === 'testnet' 
-    ? "wss://s.devnet.rippletest.net:51233"
+    ? "wss://s.altnet.rippletest.net:51233"
     : "wss://xrplcluster.com";
     
   const client = new Client(networkUrl);
