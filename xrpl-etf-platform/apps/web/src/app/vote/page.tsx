@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProposalCard from "@/components/vote/proposal-card";
 import ProposalDetailDrawer from "@/components/vote/proposal-detail-drawer";
+import VoteResultBanner from "@/components/vote/vote-result-banner";
 import { useProposals } from "@/lib/queries";
 import { useWalletStore } from "@/stores/wallet-store";
 import { useAppStore } from "@/stores/app-store";
@@ -18,6 +19,10 @@ export default function VotePage() {
   const [selectedFilter, setSelectedFilter] = useState<ProposalFilter>("all");
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [resultBanner, setResultBanner] = useState<{
+    proposal: Proposal | null;
+    isVisible: boolean;
+  }>({ proposal: null, isVisible: false });
   
   const { data: proposals, isLoading } = useProposals();
   const { isConnected, governanceTokens = 0 } = useWalletStore();
@@ -61,6 +66,29 @@ export default function VotePage() {
 
     // Close drawer after voting
     setIsDrawerOpen(false);
+
+    // 데모용: 투표 후 집계 완료 배너 표시 (실제로는 다른 조건에서)
+    const proposal = proposals?.find(p => p.id === proposalId);
+    if (proposal) {
+      setTimeout(() => {
+        setResultBanner({ proposal, isVisible: true });
+      }, 2000); // 2초 후 집계 완료 시뮬레이션
+    }
+  };
+
+  const handleRecordOnChain = async (proposalId: string): Promise<string> => {
+    // 실제 XRPL 메모 트랜잭션 로직
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 시뮬레이션 지연
+    
+    // Mock 트랜잭션 해시 생성
+    const mockTxHash = `${Date.now().toString(16).toUpperCase()}ABC123DEF456`;
+    
+    addToast({
+      message: "투표 결과가 XRPL에 성공적으로 기록되었습니다",
+      type: "success",
+    });
+    
+    return mockTxHash;
   };
 
   const handleViewDetails = (proposalId: string) => {
@@ -80,7 +108,7 @@ export default function VotePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">거버넌스 투표</h1>
+            <h1 className="text-3xl font-bold text-white">거버넌스 투표</h1>
             <p className="text-gray-400 mt-1">ETF 포트폴리오 변경안에 투표하고 의견을 제시하세요</p>
           </div>
           <div className="text-right">
@@ -228,6 +256,16 @@ export default function VotePage() {
         onClose={() => setIsDrawerOpen(false)}
         onVote={handleVote}
       />
+
+      {/* Vote Result Banner */}
+      {resultBanner.proposal && (
+        <VoteResultBanner
+          proposal={resultBanner.proposal}
+          isVisible={resultBanner.isVisible}
+          onClose={() => setResultBanner({ proposal: null, isVisible: false })}
+          onRecordOnChain={handleRecordOnChain}
+        />
+      )}
     </div>
   );
 }
