@@ -94,7 +94,7 @@ export default function CreateProject() {
     timeline: "",
   });
 
-  const updateFormData = (field: keyof ProjectForm, value: string | number | File | null) => {
+  const updateFormData = <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -286,7 +286,7 @@ export default function CreateProject() {
 }
 
 // Step Components
-function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: string | number) => void }) {
+function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) {
   return (
     <Card>
       <CardHeader>
@@ -367,7 +367,7 @@ function BasicInfoStep({ formData, updateFormData }: { formData: ProjectForm; up
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => updateFormData('businessPlan', null)}
+                    onClick={() => updateFormData('businessPlan', null as any)}
                     className="text-red-400 hover:text-red-300"
                   >
                     파일 제거

@@ -10,6 +10,7 @@ interface ExpenseData {
   percentage: number;
   color: string;
   description: string;
+  [key: string]: any;
 }
 
 interface MonthlyExpense {
