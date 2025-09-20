@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd xrpl-etf-platform && pnpm install && pnpm build --filter=web",
+  "outputDirectory": "xrpl-etf-platform/apps/web/.next",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
