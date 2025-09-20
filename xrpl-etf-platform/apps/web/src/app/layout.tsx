@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import QueryProvider from '@/providers/query-provider'
+import Navigation from '@/components/layout/navigation'
+import ToastContainer from '@/components/ui/toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -15,27 +18,22 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="dark">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          <nav className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16">
-                <div className="flex items-center">
-                  <h1 className="text-xl font-bold text-gray-900">
-                    XRPL ETF Platform
-                  </h1>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                    지갑 연결
-                  </button>
-                </div>
+        <QueryProvider>
+          <div className="min-h-screen bg-black text-white">
+            <Navigation />
+            
+            {/* Main Content */}
+            <main className="lg:ml-64">
+              <div className="pt-16 lg:pt-0">
+                {children}
               </div>
-            </div>
-          </nav>
-          <main>{children}</main>
-        </div>
+            </main>
+            
+            <ToastContainer />
+          </div>
+        </QueryProvider>
       </body>
     </html>
   )
