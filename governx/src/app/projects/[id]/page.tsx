@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/Tabs";
 import OverviewTab from "../../../components/project/OverviewTab";
+import { useWalletStore } from "@/store/walletStore";
+import { sendXRPPayment, sendIOUToken } from "@/lib/xrpl";
 import { 
   ArrowLeft,
   Heart,
@@ -128,7 +130,7 @@ const getProjectById = (id: string) => {
       faqs: [
         {
           question: "투자 최소 금액이 있나요?",
-          answer: "최소 100 RLUSD부터 투자 가능합니다."
+          answer: "최소 1 XRP부터 투자 가능합니다."
         },
         {
           question: "수수료는 얼마인가요?",
@@ -199,7 +201,7 @@ const getProjectById = (id: string) => {
           <li>초저수수료 거래 (기존 대비 90% 절약)</li>
           <li>즉시 거래 완료 (3초 이내)</li>
           <li>크리에이터 로열티 시스템</li>
-          <li>다양한 결제 수단 지원 (XRP, RLUSD)</li>
+          <li>XRP 기반 안전한 결제 시스템</li>
           <li>메타데이터 검증 및 저장</li>
         </ul>
 
@@ -252,7 +254,7 @@ const getProjectById = (id: string) => {
         {
           id: "1",
           title: "목표 달성! 감사합니다",
-          content: "목표 금액 50,000 RLUSD를 달성했습니다. 모든 후원자분들께 감사드립니다.",
+          content: "목표 금액 50,000 XRP를 달성했습니다. 모든 후원자분들께 감사드립니다.",
           date: "2024-02-20",
           image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop"
         },
@@ -984,12 +986,14 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [fundingAmount, setFundingAmount] = useState("");
   const [isLiked, setIsLiked] = useState(false);
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [userProofTokens, setUserProofTokens] = useState(0);
   const [showFundingModal, setShowFundingModal] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState("RLUSD");
+  const [selectedCurrency, setSelectedCurrency] = useState("XRP");
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Use wallet store
+  const { isConnected, address, secret, walletType, network, balance, updateBalance } = useWalletStore();
   
   const project = getProjectById(params.id as string);
 
@@ -1049,30 +1053,73 @@ export default function ProjectDetailPage() {
   };
 
   const handleFunding = () => {
-    if (!isWalletConnected) {
+    if (!isConnected) {
       toast.error("먼저 지갑을 연결해주세요!");
       return;
     }
-    if (!fundingAmount || parseFloat(fundingAmount) < 100) {
-      toast.error("최소 100 RLUSD 이상 투자해주세요!");
+    if (!fundingAmount || parseFloat(fundingAmount) < 1) {
+      toast.error("최소 1 XRP 이상 투자해주세요!");
+      return;
+    }
+    if (parseFloat(fundingAmount) > balance.xrp) {
+      toast.error("잔액이 부족합니다!");
       return;
     }
     setShowFundingModal(true);
   };
 
-  const handleConfirmFunding = () => {
+  const handleConfirmFunding = async () => {
+    if (!secret || !address) {
+      toast.error("지갑 정보를 찾을 수 없습니다!");
+      return;
+    }
+
     setIsLoading(true);
-    // 실제로는 XRPL 트랜잭션 실행
-    setTimeout(() => {
+    
+    try {
+      // Get project creator's address (in real app, this would come from project data)
+      const projectCreatorAddress = project.escrowAddress || "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH";
+      
+      // Send XRP payment
+      const paymentResult = await sendXRPPayment(
+        secret,
+        projectCreatorAddress,
+        parseFloat(fundingAmount),
+        network
+      );
+
+      if (paymentResult.success) {
+        // Update project funding amount (in real app, this would be done via API)
+        if (typeof window !== 'undefined') {
+          const userProjects = JSON.parse(localStorage.getItem('userProjects') || '[]');
+          const projectIndex = userProjects.findIndex((p: { id: string }) => p.id === params.id);
+          
+          if (projectIndex !== -1) {
+            userProjects[projectIndex].currentAmount += parseFloat(fundingAmount);
+            userProjects[projectIndex].backers += 1;
+            localStorage.setItem('userProjects', JSON.stringify(userProjects));
+          }
+        }
+
+        // Update wallet balance
+        await updateBalance();
+        
+        toast.success(`투자가 성공적으로 완료되었습니다! TX: ${paymentResult.txHash}`);
+        setShowFundingModal(false);
+        setFundingAmount("");
+      } else {
+        toast.error(`투자 실패: ${paymentResult.error}`);
+      }
+    } catch (error) {
+      console.error('Funding error:', error);
+      toast.error("투자 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
       setIsLoading(false);
-      setShowFundingModal(false);
-      setFundingAmount("");
-      toast.success("투자가 성공적으로 완료되었습니다!");
-    }, 3000);
+    }
   };
 
   const handleVote = (proposalId: string, vote: "for" | "against") => {
-    if (!isWalletConnected) {
+    if (!isConnected) {
       toast.error("먼저 지갑을 연결해주세요!");
       return;
     }
@@ -1229,7 +1276,7 @@ export default function ProjectDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {!isWalletConnected ? (
+                    {!isConnected ? (
                       <div className="text-center py-8">
                         <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-xl font-bold text-white mb-2">지갑 연결 필요</h3>
@@ -1255,8 +1302,8 @@ export default function ProjectDetailPage() {
                               type="number"
                               value={fundingAmount}
                               onChange={(e) => setFundingAmount(e.target.value)}
-                              placeholder="100"
-                              min="100"
+                              placeholder="1"
+                              min="1"
                               className="flex-1 px-4 py-3 glass rounded-xl text-white border border-white/10 focus:border-purple-500/50 focus:outline-none"
                             />
                             <select
@@ -1264,7 +1311,6 @@ export default function ProjectDetailPage() {
                               onChange={(e) => setSelectedCurrency(e.target.value)}
                               className="px-4 py-3 glass rounded-xl text-white border border-white/10 focus:border-purple-500/50 focus:outline-none"
                             >
-                              <option value="RLUSD">RLUSD</option>
                               <option value="XRP">XRP</option>
                             </select>
                           </div>
@@ -1312,7 +1358,7 @@ export default function ProjectDetailPage() {
                         project.fundingHistory.map((item: { amount: number; date: string; backers: number; txHash: string }, index: number) => (
                           <div key={index} className="flex justify-between items-center p-3 glass rounded-lg">
                             <div>
-                              <p className="text-white font-semibold">{item.amount.toLocaleString()} RLUSD</p>
+                              <p className="text-white font-semibold">{item.amount.toLocaleString()} XRP</p>
                               <p className="text-sm text-gray-400">{item.date}</p>
                             </div>
                             <div className="text-right">
@@ -1372,7 +1418,7 @@ export default function ProjectDetailPage() {
                           </div>
                         </div>
 
-                        {proposal.status === "active" && isWalletConnected && userProofTokens > 0 && (
+                        {proposal.status === "active" && isConnected && userProofTokens > 0 && (
                           <div className="flex gap-2 mt-4">
                             <Button 
                               size="sm" 
@@ -1502,7 +1548,7 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                   <div className="text-gray-400 text-sm">
-                    목표: {project.targetAmount.toLocaleString()} RLUSD
+                    목표: {project.targetAmount.toLocaleString()} XRP
                   </div>
                 </div>
 
@@ -1544,7 +1590,7 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                {isWalletConnected && (
+                {isConnected && (
                   <div className="p-3 glass rounded-lg">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400 text-sm">내 보유량</span>
@@ -1586,7 +1632,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="flex justify-between items-center p-3 glass rounded-lg">
                     <span className="text-gray-400 font-medium">총 펀딩액</span>
-                    <span className="text-white font-semibold">450K RLUSD</span>
+                    <span className="text-white font-semibold">450K XRP</span>
                   </div>
                 </div>
               </CardContent>
