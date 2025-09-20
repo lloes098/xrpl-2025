@@ -43,10 +43,14 @@ export async function makeToken(
     const trustOK = trustResult?.result?.meta && typeof trustResult.result.meta === 'object' && 'TransactionResult' in trustResult.result.meta && trustResult.result.meta.TransactionResult === "tesSUCCESS";
     if (!trustOK) {
       const errorMsg = trustResult?.result?.meta && typeof trustResult.result.meta === 'object' && 'TransactionResult' in trustResult.result.meta ? trustResult.result.meta.TransactionResult : "unknown";
+      console.log("TrustSet 실패 상세 정보:", JSON.stringify(trustResult.result, null, 2));
       throw new Error("TrustSet failed: " + errorMsg);
+    } else {
+      console.log("✅ TrustSet 성공!");
     }
 
     // 3) (발행자 측) IOU 발행/지급 (Payment with Issued Currency)
+    // 먼저 발행자가 해당 통화를 발행해야 함
     const paymentTx = {
       TransactionType: "Payment",
       Account: issuer,
@@ -65,6 +69,7 @@ export async function makeToken(
     const payOK = payResult?.result?.meta && typeof payResult.result.meta === 'object' && 'TransactionResult' in payResult.result.meta && payResult.result.meta.TransactionResult === "tesSUCCESS";
     if (!payOK) {
       const errorMsg = payResult?.result?.meta && typeof payResult.result.meta === 'object' && 'TransactionResult' in payResult.result.meta ? payResult.result.meta.TransactionResult : "unknown";
+      console.log("Payment 실패 상세 정보:", JSON.stringify(payResult.result, null, 2));
       throw new Error("Payment (issue IOU) failed: " + errorMsg);
     }
 
@@ -77,8 +82,8 @@ export async function makeToken(
     console.log("\nHolder trust lines:", JSON.stringify(lines.result, null, 2), "\n");
 
     return {
-      trustTxHash: trustResult?.result?.hash,
-      paymentTxHash: payResult?.result?.hash,
+      trustTxHash: trustResult?.result?.tx_json?.hash,
+      paymentTxHash: payResult?.result?.tx_json?.hash,
       lines: lines.result,
     };
   } finally {
@@ -94,7 +99,7 @@ export async function makeToken(
     
     try {
         console.log("토큰 발행 시작...");
-        const result = await makeToken("ETF", testIssuerSeed, testHolderSeed, "100000");
+        const result = await makeToken("DDT", testIssuerSeed, testHolderSeed, "100000");
         console.log("토큰 발행 성공!");
         console.log("TrustSet 트랜잭션 해시:", result.trustTxHash);
         console.log("Payment 트랜잭션 해시:", result.paymentTxHash);

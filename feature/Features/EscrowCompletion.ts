@@ -1,13 +1,11 @@
-import { TokenEscrowManager } from "./TokenEscrow.ts"
-import { MPTokenManager } from "./MPTokens.ts"
+import { EscrowCore } from "./EscrowCore"
 
 /**
  * 에스크로 체결(해제) 예제 클래스
  * 생성된 에스크로를 다양한 방법으로 체결하는 방법을 보여줍니다
  */
 export class EscrowCompletionExample {
-  private escrowManager: TokenEscrowManager
-  private mptManager: MPTokenManager
+  private escrowCore: EscrowCore
 
   constructor() {
     // DevNet 테스트용 시드들
@@ -15,8 +13,7 @@ export class EscrowCompletionExample {
     const USER_SEED = "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW"
     const USER2_SEED = "sEdVFeW3aqETMKYc7z9pUToiBuaPD4V"
 
-    this.escrowManager = new TokenEscrowManager(ADMIN_SEED, USER_SEED, USER2_SEED)
-    this.mptManager = new MPTokenManager(ADMIN_SEED, USER_SEED)
+    this.escrowCore = new EscrowCore(ADMIN_SEED, USER_SEED, USER2_SEED)
   }
 
   /**
@@ -24,8 +21,7 @@ export class EscrowCompletionExample {
    */
   async initialize(): Promise<void> {
     console.log("🔧 에스크로 체결 예제 환경 초기화 중...")
-    await this.escrowManager.connect()
-    await this.mptManager.connect()
+    await this.escrowCore.connect()
     console.log("✅ 환경 초기화 완료")
   }
 
@@ -34,8 +30,7 @@ export class EscrowCompletionExample {
    */
   async cleanup(): Promise<void> {
     console.log("🧹 환경 정리 중...")
-    await this.escrowManager.disconnect()
-    await this.mptManager.disconnect()
+    await this.escrowCore.disconnect()
     console.log("✅ 환경 정리 완료")
   }
 
@@ -48,23 +43,21 @@ export class EscrowCompletionExample {
 
     try {
       // 1. MPT 토큰 발행
-      const { issuanceId } = await this.mptManager.createIssuance(
-        0, "1000000", 
-        { tfMPTCanTransfer: true, tfMPTCanEscrow: true, tfMPTRequireAuth: false }
-      )
+      const { issuanceId } = await this.escrowCore.createMPToken("1000000")
 
       // 2. 사용자 Opt-in
-      await this.mptManager.optIn(issuanceId)
+      await this.escrowCore.optIn(issuanceId)
 
       // 3. 토큰 전송
-      await this.mptManager.sendMPT(issuanceId, this.escrowManager.getUserAddress(), "1000", true)
+      const addresses = this.escrowCore.getAddresses()
+      await this.escrowCore.sendMPT(issuanceId, addresses.user, "1000")
 
       // 4. 에스크로 생성 (5초 후 자동 해제)
       console.log("📝 에스크로 생성 중... (5초 후 자동 해제)")
-      const { sequence } = await this.escrowManager.createMPTEscrow(
+      const { sequence } = await this.escrowCore.createEscrow(
         issuanceId,
         "500",
-        this.escrowManager.getUser2Address(),
+        addresses.user2,
         5, // 5초 후 해제 가능
         30 // 30초 후 취소 가능
       )
@@ -73,10 +66,7 @@ export class EscrowCompletionExample {
       console.log("⏳ 5초 대기 중... (자동 해제를 위해)")
 
       // 5. 자동 해제 실행
-      await this.escrowManager.finishEscrow(
-        this.escrowManager.getUserAddress(), 
-        sequence
-      )
+      await this.escrowCore.finishEscrow(addresses.user, sequence)
 
       console.log("🎉 자동 해제 완료! 에스크로된 토큰이 목적지로 전송되었습니다.")
 
@@ -95,23 +85,21 @@ export class EscrowCompletionExample {
 
     try {
       // 1. MPT 토큰 발행
-      const { issuanceId } = await this.mptManager.createIssuance(
-        0, "1000000", 
-        { tfMPTCanTransfer: true, tfMPTCanEscrow: true, tfMPTRequireAuth: false }
-      )
+      const { issuanceId } = await this.escrowCore.createMPToken("1000000")
 
       // 2. 사용자 Opt-in
-      await this.mptManager.optIn(issuanceId)
+      await this.escrowCore.optIn(issuanceId)
 
       // 3. 토큰 전송
-      await this.mptManager.sendMPT(issuanceId, this.escrowManager.getUserAddress(), "1000", true)
+      const addresses = this.escrowCore.getAddresses()
+      await this.escrowCore.sendMPT(issuanceId, addresses.user, "1000")
 
       // 4. 에스크로 생성 (즉시 해제 가능)
       console.log("📝 에스크로 생성 중... (즉시 해제 가능)")
-      const { sequence } = await this.escrowManager.createMPTEscrow(
+      const { sequence } = await this.escrowCore.createEscrow(
         issuanceId,
         "300",
-        this.escrowManager.getUser2Address(),
+        addresses.user2,
         0, // 즉시 해제 가능
         60 // 60초 후 취소 가능
       )
@@ -120,10 +108,7 @@ export class EscrowCompletionExample {
 
       // 5. 수동 해제 실행
       console.log("🔓 수동으로 에스크로 해제 중...")
-      await this.escrowManager.finishEscrow(
-        this.escrowManager.getUserAddress(), 
-        sequence
-      )
+      await this.escrowCore.finishEscrow(addresses.user, sequence)
 
       console.log("🎉 수동 해제 완료! 에스크로된 토큰이 목적지로 전송되었습니다.")
 
@@ -142,25 +127,23 @@ export class EscrowCompletionExample {
 
     try {
       // 1. MPT 토큰 발행
-      const { issuanceId } = await this.mptManager.createIssuance(
-        0, "1000000", 
-        { tfMPTCanTransfer: true, tfMPTCanEscrow: true, tfMPTRequireAuth: false }
-      )
+      const { issuanceId } = await this.escrowCore.createMPToken("1000000")
 
       // 2. 사용자 Opt-in
-      await this.mptManager.optIn(issuanceId)
+      await this.escrowCore.optIn(issuanceId)
 
       // 3. 토큰 전송
-      await this.mptManager.sendMPT(issuanceId, this.escrowManager.getUserAddress(), "1000", true)
+      const addresses = this.escrowCore.getAddresses()
+      await this.escrowCore.sendMPT(issuanceId, addresses.user, "1000")
 
       // 4. 에스크로 생성 (취소 전용)
       console.log("📝 에스크로 생성 중... (취소 테스트용)")
-      const { sequence } = await this.escrowManager.createMPTEscrow(
+      const { sequence } = await this.escrowCore.createEscrow(
         issuanceId,
         "200",
-        this.escrowManager.getUser2Address(),
-        30, // 30초 후 해제 가능
-        5   // 5초 후 취소 가능
+        addresses.user2,
+        5,  // 5초 후 해제 가능
+        10  // 10초 후 취소 가능
       )
 
       console.log(`✅ 에스크로 생성 완료 - Sequence: ${sequence}`)
@@ -169,10 +152,7 @@ export class EscrowCompletionExample {
       // 5. 취소 실행
       await new Promise(resolve => setTimeout(resolve, 5000))
       console.log("🚫 에스크로 취소 중...")
-      await this.escrowManager.cancelEscrow(
-        this.escrowManager.getUserAddress(), 
-        sequence
-      )
+      await this.escrowCore.cancelEscrow(addresses.user, sequence)
 
       console.log("🎉 에스크로 취소 완료! 토큰이 원래 소유자에게 반환되었습니다.")
 
@@ -191,23 +171,21 @@ export class EscrowCompletionExample {
 
     try {
       // 1. MPT 토큰 발행
-      const { issuanceId } = await this.mptManager.createIssuance(
-        0, "1000000", 
-        { tfMPTCanTransfer: true, tfMPTCanEscrow: true, tfMPTRequireAuth: false }
-      )
+      const { issuanceId } = await this.escrowCore.createMPToken("1000000")
 
       // 2. 사용자 Opt-in
-      await this.mptManager.optIn(issuanceId)
+      await this.escrowCore.optIn(issuanceId)
 
       // 3. 토큰 전송
-      await this.mptManager.sendMPT(issuanceId, this.escrowManager.getUserAddress(), "1000", true)
+      const addresses = this.escrowCore.getAddresses()
+      await this.escrowCore.sendMPT(issuanceId, addresses.user, "1000")
 
       // 4. 에스크로 생성
       console.log("📝 에스크로 생성 중...")
-      const { sequence } = await this.escrowManager.createMPTEscrow(
+      const { sequence } = await this.escrowCore.createEscrow(
         issuanceId,
         "400",
-        this.escrowManager.getUser2Address(),
+        addresses.user2,
         10, // 10초 후 해제 가능
         30  // 30초 후 취소 가능
       )
@@ -216,10 +194,7 @@ export class EscrowCompletionExample {
 
       // 5. 에스크로 상태 확인
       console.log("🔍 에스크로 상태 확인 중...")
-      const escrowInfo = await this.escrowManager.getEscrowInfo(
-        this.escrowManager.getUserAddress(), 
-        sequence
-      )
+      const escrowInfo = await this.escrowCore.getEscrowInfo(addresses.user, sequence)
 
       if (escrowInfo) {
         console.log("📊 에스크로 정보:")
@@ -285,16 +260,78 @@ export class EscrowCompletionExample {
   }
 }
 
-/**
- * 에스크로 체결 예제 실행 함수
- */
-export async function runEscrowCompletionExample(): Promise<void> {
-  const example = new EscrowCompletionExample()
-  await example.runAllScenarios()
+// 개별 기능들을 위한 헬퍼 함수들
+export async function demonstrateAutoFinish(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string
+): Promise<void> {
+  const example = new EscrowCompletionExample();
+  
+  try {
+    await example.initialize();
+    await example.demonstrateAutoFinish();
+  } finally {
+    await example.cleanup();
+  }
 }
 
-// 직접 실행 시
-runEscrowCompletionExample().catch(e => {
-  console.error("에스크로 체결 예제 실행 실패:", e)
-  process.exit(1)
-})
+export async function demonstrateManualFinish(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string
+): Promise<void> {
+  const example = new EscrowCompletionExample();
+  
+  try {
+    await example.initialize();
+    await example.demonstrateManualFinish();
+  } finally {
+    await example.cleanup();
+  }
+}
+
+export async function demonstrateEscrowStatusCheck(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string
+): Promise<void> {
+  const example = new EscrowCompletionExample();
+  
+  try {
+    await example.initialize();
+    await example.demonstrateEscrowStatusCheck();
+  } finally {
+    await example.cleanup();
+  }
+}
+
+export async function demonstrateEscrowCancel(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string
+): Promise<void> {
+  const example = new EscrowCompletionExample();
+  
+  try {
+    await example.initialize();
+    await example.demonstrateEscrowCancel();
+  } finally {
+    await example.cleanup();
+  }
+}
+
+export async function runAllEscrowScenarios(
+  adminSeed: string,
+  userSeed: string,
+  user2Seed: string
+): Promise<void> {
+  const example = new EscrowCompletionExample();
+  
+  try {
+    await example.initialize();
+    await example.runAllScenarios();
+  } finally {
+    await example.cleanup();
+  }
+}
