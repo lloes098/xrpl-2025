@@ -2512,9 +2512,17 @@ export default function ProjectDetailPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="text-center py-4">
-                          <p className="text-gray-400 text-sm mb-2">이 프로젝트는 MPToken이 설정되지 않았습니다.</p>
-                          <p className="text-gray-500 text-xs">MPToken은 프로젝트 생성 시에만 설정할 수 있습니다.</p>
+                        <div className="text-center py-6">
+                          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full mb-4">
+                            <Sparkles className="w-8 h-8 text-white" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-white mb-2">MPT 먼저 발행해주세요</h3>
+                          <p className="text-gray-400 text-sm mb-4">이 프로젝트는 MPToken이 설정되지 않았습니다.</p>
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                            <p className="text-orange-400 text-sm">
+                              MPToken을 사용하려면 프로젝트 생성 시 "토큰 설정" 단계에서 MPToken 생성을 선택해야 합니다.
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

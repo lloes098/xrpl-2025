@@ -50,13 +50,35 @@ interface ProjectForm {
   projectGoals: string;
   risks: string;
   timeline: string;
+  
+  // MPToken Configuration
+  createMPToken: boolean;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenDescription: string;
+  totalSupply: number;
+  tokenDistribution: {
+    investors: number;
+    team: number;
+    community: number;
+    reserves: number;
+  };
+  tokenBenefits: {
+    votingRights: boolean;
+    profitSharing: boolean;
+    specialBenefits: boolean;
+    governance: boolean;
+  };
 }
 
 const steps = [
   { id: 1, title: "프로젝트 정보", description: "기본 정보 입력" },
   { id: 2, title: "미디어 & 콘텐츠", description: "이미지/영상 업로드" },
   { id: 3, title: "펀딩 설정", description: "목표액 & 기간" },
-  { id: 4, title: "검토 & 출시", description: "최종 확인" },
+  { id: 4, title: "토큰 설정", description: "MPToken 구성" },
+  { id: 5, title: "창작자 정보", description: "프로필 & 사업계획서" },
+  { id: 6, title: "프로젝트 상세", description: "목표 & 리스크" },
+  { id: 7, title: "검토 & 출시", description: "최종 확인" },
 ];
 
 const categories = [
@@ -85,13 +107,31 @@ export default function CreateProject() {
     targetAmount: 10000,
     minimumPledge: 10,
     duration: 30,
-    currency: "RLUSD" as const,
+    currency: "XRP" as const,
     creatorName: "",
     creatorBio: "",
     businessPlan: null,
     projectGoals: "",
     risks: "",
     timeline: "",
+    // MPToken Configuration
+    createMPToken: false,
+    tokenName: "",
+    tokenSymbol: "",
+    tokenDescription: "",
+    totalSupply: 1000000,
+    tokenDistribution: {
+      investors: 60,
+      team: 20,
+      community: 15,
+      reserves: 5,
+    },
+    tokenBenefits: {
+      votingRights: false,
+      profitSharing: false,
+      specialBenefits: false,
+      governance: false,
+    },
   });
 
   const updateFormData = <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => {
@@ -125,6 +165,31 @@ export default function CreateProject() {
     setIsCreating(true);
     
     try {
+      // MPToken 생성 (선택사항)
+      let mptokenData = null;
+      if (formData.createMPToken) {
+        try {
+          // MPToken 생성 로직 (실제 구현에서는 XRPL에 토큰 생성)
+          const issuanceId = `MPT_${formData.tokenSymbol}_${Date.now()}`;
+          mptokenData = {
+            name: formData.tokenName,
+            symbol: formData.tokenSymbol,
+            description: formData.tokenDescription,
+            totalSupply: formData.totalSupply,
+            issuanceId: issuanceId,
+            distribution: formData.tokenDistribution,
+            benefits: formData.tokenBenefits,
+            created: true,
+            createdAt: new Date().toISOString()
+          };
+          
+          toast.success('MPToken이 성공적으로 생성되었습니다!');
+        } catch (error) {
+          console.error('MPToken creation failed:', error);
+          toast.error('MPToken 생성에 실패했습니다. 프로젝트는 생성되지만 MPToken 없이 진행됩니다.');
+        }
+      }
+      
       // 프로젝트 데이터 생성
       const newProject = {
         id: Date.now().toString(), // 임시 ID 생성
@@ -156,6 +221,8 @@ export default function CreateProject() {
         autoRefund: true,
         // 펀딩 히스토리 초기화
         fundingHistory: [],
+        // MPToken 데이터
+        mptoken: mptokenData,
         // 업데이트 초기화
         updates: [],
         // FAQ 초기화
@@ -201,6 +268,12 @@ export default function CreateProject() {
       case 3:
         return <FundingStep formData={formData} updateFormData={updateFormData} />;
       case 4:
+        return <MPTokenStep formData={formData} updateFormData={updateFormData} />;
+      case 5:
+        return <CreatorInfoStep formData={formData} updateFormData={updateFormData} />;
+      case 6:
+        return <ProjectDetailsStep formData={formData} updateFormData={updateFormData} />;
+      case 7:
         return <ReviewStep formData={formData} />;
       default:
         return null;
@@ -689,6 +762,36 @@ function ReviewStep({ formData }: { formData: ProjectForm }) {
                   <div className="text-gray-400 text-sm">창작자</div>
                 </div>
               </div>
+              
+              {/* MPToken 정보 표시 */}
+              {formData.createMPToken && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    <h4 className="text-lg font-semibold text-white">MPToken 정보</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">토큰 이름:</span>
+                      <span className="text-white ml-2">{formData.tokenName}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">토큰 심볼:</span>
+                      <span className="text-white ml-2">{formData.tokenSymbol}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">총 발행량:</span>
+                      <span className="text-white ml-2">{formData.totalSupply.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">배분 계획:</span>
+                      <span className="text-white ml-2">
+                        투자자 {formData.tokenDistribution.investors}%, 팀 {formData.tokenDistribution.team}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -717,6 +820,14 @@ function ReviewStep({ formData }: { formData: ProjectForm }) {
                 </div>
                 <span className="text-gray-300">지갑이 연결되어 있습니다</span>
               </div>
+              {formData.createMPToken && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-gray-300">MPToken 설정이 완료되었습니다</span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -724,3 +835,335 @@ function ReviewStep({ formData }: { formData: ProjectForm }) {
     </div>
   );
 }
+
+// Creator Info Step Component
+const CreatorInfoStep = ({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) => {
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full mb-4">
+          <Users className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-2">창작자 정보</h2>
+        <p className="text-gray-400">프로젝트 창작자 정보와 사업계획서를 입력해주세요</p>
+      </div>
+
+      <Card className="glass">
+        <CardContent className="p-6">
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">창작자 이름 *</label>
+              <Input
+                value={formData.creatorName}
+                onChange={(e) => updateFormData('creatorName', e.target.value)}
+                placeholder="창작자 이름을 입력해주세요"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">창작자 소개</label>
+              <Textarea
+                value={formData.creatorBio}
+                onChange={(e) => updateFormData('creatorBio', e.target.value)}
+                placeholder="창작자에 대한 소개를 작성해주세요"
+                rows={4}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">사업계획서 *</label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-lg hover:border-gray-500">
+                <div className="space-y-1 text-center">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="flex text-sm text-gray-300">
+                    <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-cyan-400 hover:text-cyan-300 focus-within:outline-none">
+                      <span>파일 업로드</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => updateFormData('businessPlan', e.target.files?.[0] || null)}
+                        className="sr-only"
+                      />
+                    </label>
+                    <p className="pl-1">또는 드래그 앤 드롭</p>
+                  </div>
+                  <p className="text-xs text-gray-400">PDF, DOC, DOCX 파일만 업로드 가능</p>
+                </div>
+              </div>
+              {formData.businessPlan && (
+                <div className="mt-2 text-sm text-green-400">
+                  ✓ {formData.businessPlan.name} 업로드 완료
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Project Details Step Component
+const ProjectDetailsStep = ({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) => {
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mb-4">
+          <Target className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-2">프로젝트 상세</h2>
+        <p className="text-gray-400">프로젝트의 목표, 리스크, 타임라인을 상세히 설명해주세요</p>
+      </div>
+
+      <Card className="glass">
+        <CardContent className="p-6">
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">프로젝트 목표</label>
+              <Textarea
+                value={formData.projectGoals}
+                onChange={(e) => updateFormData('projectGoals', e.target.value)}
+                placeholder="프로젝트의 구체적인 목표와 달성하고자 하는 결과를 설명해주세요"
+                rows={4}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">리스크 및 도전과제</label>
+              <Textarea
+                value={formData.risks}
+                onChange={(e) => updateFormData('risks', e.target.value)}
+                placeholder="프로젝트 진행 중 예상되는 리스크와 도전과제를 설명해주세요"
+                rows={4}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">프로젝트 타임라인</label>
+              <Textarea
+                value={formData.timeline}
+                onChange={(e) => updateFormData('timeline', e.target.value)}
+                placeholder="프로젝트의 주요 마일스톤과 일정을 설명해주세요"
+                rows={4}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// MPToken Configuration Step Component
+const MPTokenStep = ({ formData, updateFormData }: { formData: ProjectForm; updateFormData: (field: keyof ProjectForm, value: any) => void }) => {
+  const [distributionTotal, setDistributionTotal] = useState(100);
+
+  const updateDistribution = (field: keyof typeof formData.tokenDistribution, value: number) => {
+    const newDistribution = { ...formData.tokenDistribution, [field]: value };
+    updateFormData('tokenDistribution', newDistribution);
+    
+    const total = Object.values(newDistribution).reduce((sum, val) => sum + val, 0);
+    setDistributionTotal(total);
+  };
+
+  const updateBenefit = (field: keyof typeof formData.tokenBenefits, value: boolean) => {
+    updateFormData('tokenBenefits', { ...formData.tokenBenefits, [field]: value });
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+          <Sparkles className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-2">MPToken 설정</h2>
+        <p className="text-gray-400">프로젝트 전용 토큰을 생성하여 투자자들에게 특별한 혜택을 제공하세요</p>
+      </div>
+
+      <Card className="glass">
+        <CardContent className="p-6">
+          <div className="space-y-6">
+            {/* MPToken 생성 여부 */}
+            <div className="flex items-center justify-between p-4 border border-purple-500/20 rounded-lg">
+              <div>
+                <h3 className="text-lg font-semibold text-white">MPToken 생성</h3>
+                <p className="text-gray-400 text-sm">프로젝트 전용 토큰을 생성하시겠습니까?</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.createMPToken}
+                  onChange={(e) => updateFormData('createMPToken', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+
+            {formData.createMPToken && (
+              <>
+                {/* 토큰 기본 정보 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">토큰 이름</label>
+                    <Input
+                      value={formData.tokenName}
+                      onChange={(e) => updateFormData('tokenName', e.target.value)}
+                      placeholder="예: ProjectCoin"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">토큰 심볼</label>
+                    <Input
+                      value={formData.tokenSymbol}
+                      onChange={(e) => updateFormData('tokenSymbol', e.target.value)}
+                      placeholder="예: PRJ"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">토큰 설명</label>
+                  <Textarea
+                    value={formData.tokenDescription}
+                    onChange={(e) => updateFormData('tokenDescription', e.target.value)}
+                    placeholder="토큰의 용도와 혜택을 설명해주세요"
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">총 발행량</label>
+                  <Input
+                    type="number"
+                    value={formData.totalSupply}
+                    onChange={(e) => updateFormData('totalSupply', parseInt(e.target.value) || 0)}
+                    placeholder="1000000"
+                    className="w-full"
+                  />
+                </div>
+
+                {/* 토큰 배분 */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4">토큰 배분 계획</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">투자자 (%)</label>
+                      <Input
+                        type="number"
+                        value={formData.tokenDistribution.investors}
+                        onChange={(e) => updateDistribution('investors', parseInt(e.target.value) || 0)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">팀 (%)</label>
+                      <Input
+                        type="number"
+                        value={formData.tokenDistribution.team}
+                        onChange={(e) => updateDistribution('team', parseInt(e.target.value) || 0)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">커뮤니티 (%)</label>
+                      <Input
+                        type="number"
+                        value={formData.tokenDistribution.community}
+                        onChange={(e) => updateDistribution('community', parseInt(e.target.value) || 0)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">준비금 (%)</label>
+                      <Input
+                        type="number"
+                        value={formData.tokenDistribution.reserves}
+                        onChange={(e) => updateDistribution('reserves', parseInt(e.target.value) || 0)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <span className={`font-medium ${distributionTotal === 100 ? 'text-green-400' : 'text-red-400'}`}>
+                      총 배분: {distributionTotal}%
+                    </span>
+                    {distributionTotal !== 100 && (
+                      <span className="text-red-400 ml-2">(100%가 되어야 합니다)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 토큰 혜택 */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4">토큰 혜택</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-3 p-3 border border-gray-600 rounded-lg hover:bg-gray-800/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.tokenBenefits.votingRights}
+                        onChange={(e) => updateBenefit('votingRights', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                      <div>
+                        <div className="text-white font-medium">투표권</div>
+                        <div className="text-gray-400 text-sm">프로젝트 의사결정에 참여</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center space-x-3 p-3 border border-gray-600 rounded-lg hover:bg-gray-800/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.tokenBenefits.profitSharing}
+                        onChange={(e) => updateBenefit('profitSharing', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                      <div>
+                        <div className="text-white font-medium">수익 분배</div>
+                        <div className="text-gray-400 text-sm">프로젝트 수익의 일정 부분</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center space-x-3 p-3 border border-gray-600 rounded-lg hover:bg-gray-800/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.tokenBenefits.specialBenefits}
+                        onChange={(e) => updateBenefit('specialBenefits', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                      <div>
+                        <div className="text-white font-medium">특별 혜택</div>
+                        <div className="text-gray-400 text-sm">완성품 우선 구매권 등</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center space-x-3 p-3 border border-gray-600 rounded-lg hover:bg-gray-800/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.tokenBenefits.governance}
+                        onChange={(e) => updateBenefit('governance', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                      <div>
+                        <div className="text-white font-medium">거버넌스</div>
+                        <div className="text-gray-400 text-sm">프로젝트 방향성 제안권</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
