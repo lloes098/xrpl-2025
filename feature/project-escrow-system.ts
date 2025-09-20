@@ -10,6 +10,14 @@ import { EscrowCore } from "./Features/EscrowCore";
  * 3. 각 프로젝트마다 독자적인 MPT 발행
  * 4. 목표 금액 달성시 자동 에스크로 해제
  * 5. 목표 금액 미달성시 에스크로 취소 (돈 반환)
+ * 
+ * ⚠️ 하드코딩된 부분들:
+ * - 시드 값들 (보안상 하드코딩)
+ * - 토큰 설정값들 (소수점, 최대발행량 등)
+ * - 에스크로 지속 시간
+ * - 모니터링 주기
+ * - 프로젝트 수집 주소
+ * - 토큰 메타데이터
  */
 
 interface ProjectConfig {
@@ -76,19 +84,19 @@ class ProjectEscrowSystem {
             name: `${config.projectName} Token`,
             ticker: config.projectId.toUpperCase(),
             description: `프로젝트 ${config.projectName}을 위한 독립적인 토큰`,
-            decimals: 2,
-            total_supply: "10000000", // 10,000,000 units (하드코딩)
-            asset_class: "other",     // 하드코딩: 표준 asset_class 사용
-            icon: "https://xrpl.org/assets/favicon.16698f9bee80e5687493ed116f24a6633bb5eaa3071414d64b3bed30c3db1d1d.8a5edab2.ico", // 하드코딩: 기본 아이콘
-            use_case: "Project funding", // 하드코딩: 프로젝트 펀딩용
-            issuer_name: "Project Admin"  // 하드코딩: 발행자명
+            decimals: 2, // ⚠️ 하드코딩: 소수점 자릿수 (2자리)
+            total_supply: "10000000", // ⚠️ 하드코딩: 최대 발행량 (10,000,000 units)
+            asset_class: "other",     // ⚠️ 하드코딩: 표준 asset_class 사용
+            icon: "https://xrpl.org/assets/favicon.16698f9bee80e5687493ed116f24a6633bb5eaa3071414d64b3bed30c3db1d1d.8a5edab2.ico", // ⚠️ 하드코딩: 기본 아이콘
+            use_case: "Project funding", // ⚠️ 하드코딩: 프로젝트 펀딩용
+            issuer_name: "Project Admin"  // ⚠️ 하드코딩: 발행자명
         };
         const metadata = Buffer.from(JSON.stringify(tokenInfo)).toString('hex');
 
         const { issuanceId } = await this.mptManager.createIssuance(
-            0,                    // 소수점 자릿수 (하드코딩)
-            "10000000",          // 최대 발행량 (하드코딩)
-            {                    // 플래그 설정 (하드코딩)
+            0,                    // ⚠️ 하드코딩: 소수점 자릿수 (0자리)
+            "10000000",          // ⚠️ 하드코딩: 최대 발행량 (10,000,000)
+            {                    // ⚠️ 하드코딩: 플래그 설정
                 tfMPTCanTransfer: true,    // 전송 가능
                 tfMPTCanEscrow: true,      // 에스크로 가능
                 tfMPTRequireAuth: false    // 권한 요구 안함
@@ -159,18 +167,18 @@ class ProjectEscrowSystem {
             console.log(`   ⚠️ Opt-in 실패 (이미 참여했을 수 있음): ${error instanceof Error ? error.message : String(error)}`);
         }
 
-        // 2. Admin이 사용자에게 토큰 발급 (하드코딩: 참여 금액만큼 발급)
+        // 2. Admin이 사용자에게 토큰 발급
         await this.mptManager.sendMPT(project.issuanceId, userWallet.address, amount);
         console.log(`   ✅ 토큰 발급 완료: ${amount} ${projectId.toUpperCase()}`);
 
         // 3. 사용자가 에스크로 생성
-        const escrowDuration = 60; // 하드코딩: 60분 후 취소 가능
+        const escrowDuration = 60; // ⚠️ 하드코딩: 60분 후 취소 가능
         const { sequence } = await this.escrowCore.createEscrow(
             project.issuanceId,
             amount,
-            userWallet.address,  // 자기 자신에게 (임시)
+            userWallet.address,  // ⚠️ 하드코딩: 자기 자신에게 (임시)
             project.deadline.getTime() / 1000, // 마감 시간에 해제 가능
-            (project.deadline.getTime() / 1000) + (escrowDuration * 60) // 마감 + 60분 후 취소 가능
+            (project.deadline.getTime() / 1000) + (escrowDuration * 60) // ⚠️ 하드코딩: 마감 + 60분 후 취소 가능
         );
 
         // 4. 에스크로 정보 저장
@@ -232,9 +240,9 @@ class ProjectEscrowSystem {
 
         for (const escrow of project.escrows) {
             try {
-                // 하드코딩: 에스크로 해제시 토큰을 프로젝트 수집 주소로 전송
+                // ⚠️ 하드코딩: 에스크로 해제시 토큰을 프로젝트 수집 주소로 전송
                 // (실제로는 프로젝트 관리자나 특정 주소로 전송)
-                const projectCollectionAddress = this.escrowCore.getAddresses().admin; // 하드코딩: Admin 주소로 수집
+                const projectCollectionAddress = this.escrowCore.getAddresses().admin; // ⚠️ 하드코딩: Admin 주소로 수집
                 
                 await this.escrowCore.finishEscrow(escrow.userAddress, escrow.sequence);
                 console.log(`   ✅ 에스크로 해제: ${escrow.userAddress} (${escrow.amount})`);
@@ -279,7 +287,7 @@ class ProjectEscrowSystem {
             for (const projectId of this.projects.keys()) {
                 await this.checkProjectStatus(projectId);
             }
-        }, 30000); // 하드코딩: 30초마다 체크
+        }, 30000); // ⚠️ 하드코딩: 30초마다 체크
     }
 
     /**
@@ -297,9 +305,9 @@ class ProjectEscrowSystem {
 async function runProjectEscrowDemo() {
     console.log("🚀 === 프로젝트 에스크로 시스템 데모 시작 ===");
     
-    // 하드코딩된 설정값들
-    const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";  // 하드코딩: Admin 시드
-    const USER_SEEDS = [                                    // 하드코딩: 사용자 시드들
+    // ⚠️ 하드코딩된 설정값들
+    const ADMIN_SEED = "sEdS15TBrTKUzNaKnmD1sWJfBiMvaHc";  // ⚠️ 하드코딩: Admin 시드
+    const USER_SEEDS = [                                    // ⚠️ 하드코딩: 사용자 시드들
         "sEd7W8Zc3QRsmHTJv4PoKT3BBMxYnzW",
         "sEdVFeW3aqETMKYc7z9pUToiBuaPD4V"
     ];
@@ -311,32 +319,32 @@ async function runProjectEscrowDemo() {
         
         // 1. 프로젝트 생성
         const project1 = await system.createProject({
-            projectId: "GAME",                    // 하드코딩: 게임 프로젝트
-            projectName: "Blockchain Game",       // 하드코딩: 프로젝트명
-            targetAmount: "10000",               // 하드코딩: 목표 금액
-            deadlineHours: 1,                    // 하드코딩: 1시간 후 마감
-            escrowDurationMinutes: 60            // 하드코딩: 60분 에스크로 지속
+            projectId: "GAME",                    // ⚠️ 하드코딩: 게임 프로젝트
+            projectName: "Blockchain Game",       // ⚠️ 하드코딩: 프로젝트명
+            targetAmount: "10000",               // ⚠️ 하드코딩: 목표 금액
+            deadlineHours: 1,                    // ⚠️ 하드코딩: 1시간 후 마감
+            escrowDurationMinutes: 60            // ⚠️ 하드코딩: 60분 에스크로 지속
         });
         
         const project2 = await system.createProject({
-            projectId: "NFT",                     // 하드코딩: NFT 프로젝트
-            projectName: "NFT Collection",        // 하드코딩: 프로젝트명
-            targetAmount: "5000",                // 하드코딩: 목표 금액
-            deadlineHours: 2,                    // 하드코딩: 2시간 후 마감
-            escrowDurationMinutes: 120           // 하드코딩: 120분 에스크로 지속
+            projectId: "NFT",                     // ⚠️ 하드코딩: NFT 프로젝트
+            projectName: "NFT Collection",        // ⚠️ 하드코딩: 프로젝트명
+            targetAmount: "5000",                // ⚠️ 하드코딩: 목표 금액
+            deadlineHours: 2,                    // ⚠️ 하드코딩: 2시간 후 마감
+            escrowDurationMinutes: 120           // ⚠️ 하드코딩: 120분 에스크로 지속
         });
         
         // 2. 사용자들이 프로젝트에 참여
         console.log("\n👥 사용자들이 프로젝트에 참여 중...");
         
         // 사용자1이 게임 프로젝트에 참여
-        await system.participateInProject("GAME", USER_SEEDS[0], "3000");
+        await system.participateInProject("GAME", USER_SEEDS[0], "3000"); // ⚠️ 하드코딩: 참여 금액
         
         // 사용자2가 게임 프로젝트에 참여
-        await system.participateInProject("GAME", USER_SEEDS[1], "4000");
+        await system.participateInProject("GAME", USER_SEEDS[1], "4000"); // ⚠️ 하드코딩: 참여 금액
         
         // 사용자1이 NFT 프로젝트에 참여
-        await system.participateInProject("NFT", USER_SEEDS[0], "2000");
+        await system.participateInProject("NFT", USER_SEEDS[0], "2000"); // ⚠️ 하드코딩: 참여 금액
         
         // 3. 자동 모니터링 시작
         system.startMonitoring();
@@ -351,7 +359,7 @@ async function runProjectEscrowDemo() {
         // 5. 대기 (실제로는 자동 모니터링이 처리)
         console.log("\n⏳ 자동 모니터링 중... (Ctrl+C로 종료)");
         
-        // 데모를 위해 2분 대기 후 수동 체크
+        // ⚠️ 하드코딩: 데모를 위해 2분 대기 후 수동 체크
         await new Promise(resolve => setTimeout(resolve, 120000));
         
         console.log("\n🔍 수동 상태 체크:");
