@@ -97,7 +97,7 @@ export default function SettingsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">설정</h1>
+            <h1 className="text-3xl font-bold text-white">설정</h1>
             <p className="text-gray-400 mt-1">플랫폼 설정을 관리하세요</p>
           </div>
           <div className="flex items-center space-x-2">
