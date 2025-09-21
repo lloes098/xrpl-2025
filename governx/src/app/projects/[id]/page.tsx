@@ -14,7 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui
 import OverviewTab from "../../../components/project/OverviewTab";
 import { TransparencyChart } from "../../../components/project/TransparencyChart";
 import { useWalletStore } from "@/store/walletStore";
-import { sendXRPPayment, sendIOUToken, sendIOUPayment, setupTrustline, checkTrustline, createProjectEscrow, releaseProjectFunds, refundProjectFunds, getCompleteBalance, getCurrencyBalance, autoFinishEscrow, autoCancelEscrow, activateMPT, completeMPTLifecycle, cancelMPTLifecycle, distributeMPTTokens } from "@/lib/xrpl";
+import { sendXRPPayment, sendIOUToken, sendIOUPayment, setupTrustline, checkTrustline, createProjectEscrow, releaseProjectFunds, refundProjectFunds, getCompleteBalance, getCurrencyBalance, autoFinishEscrow, autoCancelEscrow, activateMPT, completeMPTLifecycle, cancelMPTLifecycle, distributeMPTTokens, createXRPLWallet } from "@/lib/xrpl";
+import { createEscrowAPI, finishEscrowAPI, cancelEscrowAPI, getEscrowInfoAPI, getEscrowStatusAPI } from "@/lib/api/escrow";
+import { requestTestXRP } from "@/lib/api/faucet";
 import { 
   ArrowLeft,
   Heart,
@@ -1002,7 +1004,7 @@ export default function ProjectDetailPage() {
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   
   // Use wallet store
-  const { isConnected, address, secret, walletType, network, balance, updateBalance } = useWalletStore();
+  const { isConnected, address, secret, walletType, network, balance, updateBalance, connectWithSeed } = useWalletStore();
   
   const project = getProjectById(params.id as string);
   
@@ -1075,13 +1077,70 @@ export default function ProjectDetailPage() {
       return;
     }
     if (parseFloat(fundingAmount) > balance.xrp) {
-      setFundingError("잔액이 부족합니다!");
+      if (balance.xrp === 0) {
+        setFundingError("지갑에 XRP가 없습니다. 이 지갑 주소가 XRPL에 존재하지 않을 수 있습니다. 새 테스트 지갑을 생성하거나 테스트용 XRP를 받아보세요.");
+      } else {
+        setFundingError(`잔액이 부족합니다! (보유: ${balance.xrp} XRP, 필요: ${fundingAmount} XRP)`);
+      }
       return;
     }
     // Clear any previous errors and success messages
     setFundingError("");
     setFundingSuccess("");
     setShowFundingModal(true);
+  };
+
+  const handleRequestTestXRP = async () => {
+    if (!address) {
+      setFundingError("지갑이 연결되지 않았습니다!");
+      return;
+    }
+
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      const result = await requestTestXRP({
+        address: address,
+        network: network
+      });
+
+      if (result.success) {
+        setFundingSuccess("테스트용 XRP 요청이 성공했습니다! 몇 분 후 잔액이 업데이트됩니다.");
+        // 잔액 새로고침
+        setTimeout(() => {
+          updateBalance();
+        }, 2000);
+      } else {
+        setFundingError(`테스트 XRP 요청 실패: ${result.error}`);
+      }
+    } catch (error) {
+      setFundingError("테스트 XRP 요청 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateTestWallet = async () => {
+    setIsLoading(true);
+    setFundingError("");
+
+    try {
+      // 테스트용 지갑 생성
+      const result = await createXRPLWallet(network);
+      
+      if (result.success && result.wallet) {
+        // 지갑 연결
+        await connectWithSeed(result.wallet.secret, network);
+        setFundingSuccess(`테스트용 지갑이 생성되었습니다! 주소: ${result.wallet.address}, 잔액: ${(parseFloat(result.wallet.balance) / 1_000_000).toFixed(6)} XRP`);
+      } else {
+        setFundingError(`테스트 지갑 생성 실패: ${result.error}`);
+      }
+    } catch (error) {
+      setFundingError("테스트 지갑 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleConfirmFunding = async () => {
@@ -1220,10 +1279,22 @@ export default function ProjectDetailPage() {
         // Trigger refresh to update project data
         setRefreshTrigger(prev => prev + 1);
       } else {
-        setFundingError(`투자 실패: ${paymentResult.error}`);
+        // 투자 실패 시 더 명확한 에러 메시지 표시
+        if (paymentResult.error?.includes('Account not found')) {
+          setFundingError("지갑 주소가 XRPL에 존재하지 않습니다. 새 테스트 지갑을 생성하거나 유효한 주소를 사용해주세요.");
+        } else if (paymentResult.error?.includes('Insufficient balance')) {
+          setFundingError("잔액이 부족합니다. 테스트용 XRP를 받거나 새 지갑을 생성해주세요.");
+        } else {
+          setFundingError(`투자 실패: ${paymentResult.error}`);
+        }
       }
     } catch (error) {
-      setFundingError("투자 중 오류가 발생했습니다. 다시 시도해주세요.");
+      console.error('Funding error:', error);
+      if (error instanceof Error && error.message.includes('Account not found')) {
+        setFundingError("지갑 주소가 XRPL에 존재하지 않습니다. 새 테스트 지갑을 생성해주세요.");
+      } else {
+        setFundingError("투자 중 오류가 발생했습니다. 다시 시도해주세요.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1243,16 +1314,16 @@ export default function ProjectDetailPage() {
       // Create escrow for project funding with a smaller test amount
       const testAmount = 10; // Test with 10 XRP instead of full target amount
       
-      const escrowResult = await createProjectEscrow(
-        secret,
-        address, // Project creator receives funds
-        testAmount, // Use smaller test amount
-        selectedCurrency,
-        selectedToken?.issuer,
-        30, // 30 days to release
-        60, // 60 days to cancel
-        network
-      );
+      const escrowResult = await createEscrowAPI({
+        creatorSeed: secret,
+        destination: address, // Project creator receives funds
+        amount: testAmount, // Use smaller test amount
+        currency: selectedCurrency,
+        tokenIssuer: selectedToken?.issuer,
+        finishAfterDays: 30, // 30 days to release
+        cancelAfterDays: 60, // 60 days to cancel
+        network: network
+      });
 
       if (escrowResult.success) {
         setEscrowInfo({
@@ -1282,12 +1353,13 @@ export default function ProjectDetailPage() {
     setFundingError("");
 
     try {
-      const releaseResult = await releaseProjectFunds(
-        secret,
-        address,
-        escrowInfo.sequence,
-        network
-      );
+      const releaseResult = await finishEscrowAPI({
+        finisherSeed: secret,
+        ownerAddress: address,
+        offerSequence: escrowInfo.sequence,
+        network: network,
+        autoFinish: false
+      });
 
       if (releaseResult.success) {
         setFundingSuccess(`자금이 성공적으로 해제되었습니다! TX: ${releaseResult.txHash}`);
@@ -1312,12 +1384,13 @@ export default function ProjectDetailPage() {
     setFundingError("");
 
     try {
-      const refundResult = await refundProjectFunds(
-        secret,
-        address,
-        escrowInfo.sequence,
-        network
-      );
+      const refundResult = await cancelEscrowAPI({
+        cancelerSeed: secret,
+        ownerAddress: address,
+        offerSequence: escrowInfo.sequence,
+        network: network,
+        autoCancel: false
+      });
 
       if (refundResult.success) {
         setFundingSuccess(`자금이 성공적으로 환불되었습니다! TX: ${refundResult.txHash}`);
@@ -1342,12 +1415,13 @@ export default function ProjectDetailPage() {
     setFundingError("");
 
     try {
-      const autoFinishResult = await autoFinishEscrow(
-        secret,
-        address,
-        escrowInfo.sequence,
-        network
-      );
+      const autoFinishResult = await finishEscrowAPI({
+        finisherSeed: secret,
+        ownerAddress: address,
+        offerSequence: escrowInfo.sequence,
+        network: network,
+        autoFinish: true
+      });
 
       if (autoFinishResult.success) {
         setFundingSuccess(`에스크로가 자동으로 해제되었습니다! TX: ${autoFinishResult.txHash}`);
@@ -1372,12 +1446,13 @@ export default function ProjectDetailPage() {
     setFundingError("");
 
     try {
-      const autoCancelResult = await autoCancelEscrow(
-        secret,
-        address,
-        escrowInfo.sequence,
-        network
-      );
+      const autoCancelResult = await cancelEscrowAPI({
+        cancelerSeed: secret,
+        ownerAddress: address,
+        offerSequence: escrowInfo.sequence,
+        network: network,
+        autoCancel: true
+      });
 
       if (autoCancelResult.success) {
         setFundingSuccess(`에스크로가 자동으로 취소되었습니다! TX: ${autoCancelResult.txHash}`);
@@ -1841,10 +1916,50 @@ export default function ProjectDetailPage() {
                         {/* Error Message Display */}
                         {fundingError && (
                           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-3">
                               <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                               <span className="text-red-400 text-sm">{fundingError}</span>
                             </div>
+                            {(fundingError.includes("잔액이 부족") || fundingError.includes("XRP가 없습니다") || fundingError.includes("XRPL에 존재하지 않습니다")) && network === 'testnet' && (
+                              <div className="space-y-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={handleRequestTestXRP}
+                                  disabled={isLoading}
+                                  className="w-full text-sm"
+                                >
+                                  {isLoading ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                                      요청 중...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <DollarSign className="w-4 h-4 mr-2" />
+                                      테스트용 XRP 받기 (1000 XRP)
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  onClick={handleCreateTestWallet}
+                                  disabled={isLoading}
+                                  className="w-full text-sm"
+                                >
+                                  {isLoading ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                                      생성 중...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Wallet className="w-4 h-4 mr-2" />
+                                      새 테스트 지갑 생성
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
 

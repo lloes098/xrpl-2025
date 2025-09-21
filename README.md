@@ -1,82 +1,160 @@
-# xrpl-2025
+# Ripplize - XRPL 기반 크라우드펀딩 플랫폼
 
-Ripplize – XRPL 통합 크라우드펀딩 플랫폼
+XRPL (XRP Ledger) 기반의 탈중앙화 크라우드펀딩 플랫폼으로, Web3 프로젝트의 투명하고 안전한 펀딩을 지원합니다.
 
-Ripplize는 XRP Ledger(XRPL) 을 기반으로 한 완전 분산형 크라우드펀딩 플랫폼입니다.
-투명성, 보안성, 그리고 사용자 자율성을 핵심 가치로 하여, 다음과 같은 주요 기능들을 제공합니다.
+## 🚀 주요 기능
 
-**발표 자료:** https://docs.google.com/presentation/d/1-Iu9Y5M-dgRfP1MgdO4Kxw-17HCeuIcM2Tk-cn8JasM/edit?usp=sharing
+### 프로젝트 관리
+- **프로젝트 생성**: Web3 프로젝트 등록 및 관리
+- **투명한 펀딩**: 블록체인 기반의 투명한 자금 관리
+- **실시간 진행률**: 실시간 펀딩 현황 및 통계
 
-**데모영상:** https://www.youtube.com/watch?v=iNH954ZDkiA&feature=youtu.be
+### MPT (Multi-Purpose Token) 통합
+- **토큰 발행**: 프로젝트별 MPT 토큰 생성
+- **에스크로 시스템**: 안전한 자금 보관 및 관리
+- **권한 관리**: Can Transfer, Can Escrow, Can Trade, Can Lock 등 세밀한 권한 제어
 
-**UI 사진:** https://drive.google.com/drive/folders/1fjncgn67uOWxKFc3bBotgasNQztLnA_H
+### 에스크로 관리
+- **에스크로 생성**: 목표 달성 시 자동 자금 해제
+- **조건부 해제**: 시간 기반 또는 조건 기반 자금 해제
+- **취소 기능**: 프로젝트 실패 시 자금 환불
 
-**서비스:** https://xrpl-2025-3e1q-git-main-lloes098s-projects.vercel.app/
+## 🏗️ 프로젝트 구조
 
+```
+final/
+├── front/                    # Next.js 프론트엔드 애플리케이션
+│   ├── src/
+│   │   ├── app/             # Next.js App Router
+│   │   │   ├── api/         # API 라우트
+│   │   │   │   ├── mpt/     # MPT 관련 API
+│   │   │   │   └── escrow/  # 에스크로 관련 API
+│   │   │   ├── projects/    # 프로젝트 페이지
+│   │   │   └── create/      # 프로젝트 생성 페이지
+│   │   ├── components/      # React 컴포넌트
+│   │   └── lib/            # 유틸리티 및 API 클라이언트
+│   └── package.json
+└── xrpl-core/              # XRPL 코어 서비스
+    ├── src/
+    │   ├── services/
+    │   │   ├── mpt/        # MPT 토큰 관리
+    │   │   └── escrow/     # 에스크로 관리
+    │   └── api/            # Express API 서버
+    └── package.json
+```
 
-## 1. 지갑 연결 및 계정 관리
+## 🛠️ 기술 스택
 
-XRPL.js Client 연결: Testnet/Mainnet 네트워크 자동 연결 및 실시간 블록체인 데이터 접근
+### 프론트엔드
+- **Next.js 15.5.3**: React 기반 풀스택 프레임워크
+- **TypeScript**: 타입 안전성
+- **Tailwind CSS**: 유틸리티 우선 CSS 프레임워크
+- **Radix UI**: 접근성 우선 UI 컴포넌트
+- **Zustand**: 상태 관리
 
-지갑 생성: createXRPLWallet() 함수로 새로운 XRPL 지갑 자동 생성 및 테스트넷 자동 펀딩
+### 백엔드
+- **XRPL (XRP Ledger)**: 블록체인 네트워크
+- **MPT (Multi-Purpose Token)**: 멀티 퍼포즈 토큰
+- **Escrow**: 조건부 자금 보관 시스템
+- **Express.js**: API 서버
 
-시드 기반 연결: createWalletFromSeed() 함수로 기존 지갑 복원 및 연결
+### 개발 도구
+- **Turbopack**: Next.js 번들러
+- **ESLint**: 코드 품질 관리
+- **TypeScript**: 정적 타입 검사
 
-계정 정보 조회: getAccountBalance() 함수로 실시간 XRP 잔액 및 계정 상태 확인
+## 🚀 시작하기
 
-## 2. 다중 통화 결제 시스템
+### 1. 저장소 클론
+```bash
+git clone https://github.com/lloes098/xrpl-2025.git
+cd xrpl-2025/final
+```
 
-XRP 결제: sendXRPPayment() 함수로 네이티브 XRP 전송
+### 2. 의존성 설치
+```bash
+# 프론트엔드 의존성 설치
+cd front
+npm install
 
-IOU 토큰 결제: sendIOUPayment() 함수로 USDC, USDT 등 IOU 토큰 전송
+# XRPL 코어 의존성 설치
+cd ../xrpl-core
+npm install
+```
 
-RLUSD 지원: XRP와 동일한 네이티브 통화 처리 (별도 트러스트라인 불필요)
+### 3. 환경 변수 설정
+```bash
+# front/.env.local 파일 생성
+NEXT_PUBLIC_XRPL_NETWORK=wss://s.devnet.rippletest.net:51233
+```
 
-자동 트러스트라인 설정: setupTrustline(), checkTrustline() 함수로 IOU 토큰 보유를 위한 트러스트라인 자동 생성
+### 4. 개발 서버 실행
+```bash
+# 프론트엔드 개발 서버 실행
+cd front
+npm run dev
 
-## 3. 에스크로 시스템
+# XRPL 코어 서버 실행 (별도 터미널)
+cd xrpl-core
+npm run dev
+```
 
-조건부 자금 관리: createProjectEscrow() 함수로 프로젝트별 독립적인 에스크로 생성
+## 📱 사용법
 
-자동 해제/취소: autoFinishEscrow(), autoCancelEscrow() 함수로 조건 만족 시 자동 자금 해제
+### 프로젝트 생성
+1. `/create` 페이지에서 프로젝트 정보 입력
+2. MPT 토큰 설정 (선택사항)
+3. 프로젝트 등록 및 MPT 토큰 발행
 
-수동 관리: releaseProjectFunds(), refundProjectFunds() 함수로 자금 수동 관리
+### 에스크로 관리
+1. 프로젝트 상세 페이지에서 "에스크로 생성" 클릭
+2. 에스크로 조건 설정 (해제 시간, 취소 시간)
+3. 자금 보관 및 조건부 해제
 
-XRP/IOU 에스크로: createXRPEscrow(), createIOUEscrow() 함수로 다양한 자산 유형 지원
+### MPT 토큰 관리
+- **발행**: 프로젝트 생성 시 MPT 토큰 발행
+- **권한 설정**: Transfer, Escrow, Trade, Lock 권한 관리
+- **생명주기**: Activate → Distribute → Complete/Cancel
 
-## 4. MPToken 생태계
+## 🔧 API 엔드포인트
 
-토큰 발행: MPTokenManager 클래스로 프로젝트별 독립적인 MPToken 생성
+### MPT 관련
+- `POST /api/mpt/create` - MPT 토큰 생성
+- `GET /api/mpt/info` - MPT 토큰 정보 조회
 
-생명주기 관리:
+### 에스크로 관련
+- `POST /api/escrow/create` - 에스크로 생성
+- `POST /api/escrow/finish` - 에스크로 해제
+- `POST /api/escrow/cancel` - 에스크로 취소
+- `GET /api/escrow/info` - 에스크로 정보 조회
 
-activateMPT()
+## 🌐 네트워크
 
-completeMPTLifecycle()
+- **개발 환경**: XRPL Devnet
+- **테스트 XRP**: [Devnet Faucet](https://xrpl.org/xrp-testnet-faucet.html)에서 무료 XRP 획득 가능
 
-cancelMPTLifecycle()
+## 🔐 보안
 
-토큰 배포: distributeMPTTokens() 함수로 투자자, 팀, 커뮤니티에 토큰 배분
+- **지갑 관리**: 시드 기반 지갑 생성 및 관리
+- **트랜잭션 서명**: 모든 트랜잭션은 개인키로 서명
+- **권한 제어**: MPT 토큰별 세밀한 권한 관리
 
-거버넌스 통합: 토큰 기반 투표권 및 의사결정 시스템 연동
+## 📄 라이선스
 
-## 5. 실시간 데이터 동기화
+MIT License
 
-잔액 조회: getCompleteBalance() 함수로 XRP 및 IOU 토큰 잔액 실시간 조회
+## 🤝 기여하기
 
-거래 추적: XRPL 트랜잭션 해시값 저장 및 검증 가능한 거래 내역 제공
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-상태 모니터링: BalanceManager 클래스로 계정 상태 및 토큰 보유량 실시간 업데이트
+## 📞 문의
 
-## 6. 보안 및 검증
+프로젝트 관련 문의사항이 있으시면 이슈를 생성해 주세요.
 
-트랜잭션 서명: 클라이언트 사이드 개인키 서명 후 XRPL에 제출
+---
 
-결과 검증: engine_result 및 meta.TransactionResult 이중 검증으로 성공 보장
-
-에러 처리: XRPL 특화 에러 코드(tecUNFUNDED, tesSUCCESS 등) 처리 및 사용자 친화적 메시지 제공
-
-## 🚀 Conclusion 
-
-Ripplize는 XRPL 기반으로 구축된 완전히 분산화된 크라우드펀딩 플랫폼으로,
-투명성, 보안성, 그리고 사용자 자율성을 보장합니다.
+**Ripplize** - Web3의 미래를 함께 만들어가세요! 🚀
